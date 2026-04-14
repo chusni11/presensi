@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absensi Digital Pramuka</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- HTML5 QRCode -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+    <!-- Background Elements for Glassmorphism -->
+    <div class="bg-shape shape-1"></div>
+    <div class="bg-shape shape-2"></div>
+    <div class="bg-shape shape-3"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="glass-panel text-center relative">
+            <div class="logo-container" style="display:flex; justify-content:center; margin-bottom: 10px;">
+                <img id="mainLogo" src="" alt="Logo Pramuka" style="display:none; height: 80px; object-fit: contain;">
+            </div>
+            <div class="title-container">
+                <h1 style="font-size: 1.5rem; margin-bottom: 5px; font-weight: 700; text-transform: uppercase;">ABSENSI DIGITAL PRAMUKA</h1>
+                <p id="leaderName" style="font-size: 0.9rem; opacity: 0.8;">Memuat...</p>
+            </div>
+            <div class="auth-status absolute top right mt-3 mr-3" style="position: absolute; top: 15px; right: 15px;">
+                <button id="btnLogin" class="btn-icon" title="Login Admin"><i class="fas fa-sign-in-alt"></i></button>
+                <button id="btnLogout" class="btn-icon text-danger" title="Logout" style="display:none;"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </header>
+
+        <!-- Stats Panel -->
+        <div class="stats-panel glass-panel mt-3 mb-3" style="display: flex; gap: 15px;">
+            <div class="stat-item flex-1">
+                <i class="fas fa-users" style="color: #60a5fa; font-size: 2rem; margin-bottom: 5px;"></i>
+                <div class="stat-details text-center">
+                    <span id="totalMembers" style="font-size: 1.5rem; font-weight: bold; display: block;">0</span>
+                    <label style="font-size: 0.8rem; opacity: 0.8;">Total Anggota</label>
+                </div>
+            </div>
+            <div class="stat-item flex-1">
+                <i class="fas fa-user-check" style="color: #4ade80; font-size: 2rem; margin-bottom: 5px;"></i>
+                <div class="stat-details text-center">
+                    <span id="totalHadir" style="font-size: 1.5rem; font-weight: bold; display: block;">0</span>
+                    <label style="font-size: 0.8rem; opacity: 0.8;">Hadir Hari Ini</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Menus -->
+        <nav class="main-menus grid-2 mt-3 mb-4" id="mainMenus" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="menu-btn active glass-btn" data-target="scan-view">
+                <i class="fas fa-qrcode"></i> Scan Barcode
+            </button>
+            <button class="menu-btn glass-btn" data-target="manual-view">
+                <i class="fas fa-keyboard"></i> Absen Manual
+            </button>
+            <button class="menu-btn admin-only glass-btn" data-target="report-view" style="display:none;">
+                <i class="fas fa-file-alt"></i> Laporan
+            </button>
+            <button class="menu-btn admin-only glass-btn" data-target="admin-view" style="display:none;">
+                <i class="fas fa-users-cog"></i> Kelola Anggota
+            </button>
+        </nav>
+
+        <!-- VIEWS -->
+        <main class="view-container">
+            <!-- 1. Scan View -->
+            <section id="scan-view" class="view active">
+                <div class="glass-panel text-center">
+                    <h2 class="mb-4"><i class="fas fa-camera"></i> Scan Kehadiran</h2>
+                    
+                    <div id="reader-container" style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 10px; margin-bottom: 20px;">
+                        <div id="reader" style="width: 100%; margin: 0 auto; border-radius: 10px; overflow: hidden;"></div>
+                    </div>
+                    
+                    <div class="manual-barcode-input mt-4 text-left">
+                        <label class="block mb-2" style="font-size: 0.9rem;">Atau masukkan ID (Barcode) Manual:</label>
+                        <div class="flex-row">
+                            <input type="text" id="manualBarcode" placeholder="Contoh: PRM-001" class="glass-input flex-1" style="border-radius: 8px 0 0 8px;">
+                            <button id="btnSubmitBarcode" class="btn-primary" style="border-radius: 0 8px 8px 0; padding: 10px 20px;">Kirim</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Manual Input View -->
+            <section id="manual-view" class="view" style="display:none;">
+                <div class="glass-panel">
+                    <h2 class="mb-4"><i class="fas fa-edit"></i> Absen Manual (Ijin/Sakit/Alpa)</h2>
+                    <form id="formManualAbsen" class="glass-form space-y">
+                        <div class="form-group mb-3">
+                            <label class="block mb-2">Pilih Anggota</label>
+                            <select id="selectAnggotaAbsen" class="glass-input w-100" required>
+                                <option value="">-- Pilih Anggota --</option>
+                            </select>
+                        </div>
+                        <div class="form-group mb-4">
+                            <label class="block mb-2">Status Kehadiran</label>
+                            <select id="selectStatus" class="glass-input w-100" required>
+                                <option value="Ijin">Ijin</option>
+                                <option value="Sakit">Sakit</option>
+                                <option value="Alpa">Alpa</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary w-100">Simpan Absen</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- 3. Report View -->
+            <section id="report-view" class="view" style="display:none;">
+                <div class="glass-panel">
+                    <div class="flex-between mb-4">
+                        <h2><i class="fas fa-chart-bar"></i> Laporan Kehadiran</h2>
+                        <button id="btnSyncReport" class="btn-success"><i class="fas fa-sync"></i> Sinkronisasi</button>
+                    </div>
+                    
+                    <div class="filters flex-row mb-4 gap-2">
+                        <select id="filterReportType" class="glass-input flex-1">
+                            <option value="daily">Harian (Hari Ini)</option>
+                            <option value="weekly">Mingguan (7 Hari Terakhir)</option>
+                            <option value="monthly">Bulanan (Bulan Ini)</option>
+                            <option value="all">Semua Data</option>
+                        </select>
+                        <button id="btnPrintReport" class="btn-secondary"><i class="fas fa-print"></i> Cetak</button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="tableReport" class="glass-table w-100">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Waktu</th>
+                                    <th>ID</th>
+                                    <th>Nama Lengkap</th>
+                                    <th>Golongan</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. Admin Member Management View -->
+            <section id="admin-view" class="view" style="display:none;">
+                <div class="glass-panel">
+                    <div class="flex-between mb-4">
+                        <h2><i class="fas fa-users-cog"></i> Kelola Anggota</h2>
+                        <button id="btnAddMember" class="btn-primary"><i class="fas fa-plus"></i> Tambah</button>
+                    </div>
+
+                    <div class="filters flex-between mb-4 flex-wrap gap-2">
+                        <div class="show-entries flex-row align-center">
+                            Tampilkan: 
+                            <select id="pageSize" class="glass-input ml-2" style="width: auto; padding: 5px;">
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select> baris
+                        </div>
+                        <div class="search-box text-right">
+                            <input type="text" id="searchMember" placeholder="Cari nama/ID..." class="glass-input">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="tableMembers" class="glass-table w-100">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Foto</th>
+                                    <th>ID</th>
+                                    <th>Nama Lengkap</th>
+                                    <th>Golongan</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination mt-4 flex-row justify-center align-center gap-2">
+                        <button id="btnFirstPage" class="btn-icon glass-btn-small"><i class="fas fa-angle-double-left"></i></button>
+                        <button id="btnPrevPage" class="btn-icon glass-btn-small"><i class="fas fa-angle-left"></i></button>
+                        <span id="pageInfo" style="font-size:0.9rem;">Hal 1/1</span>
+                        <button id="btnNextPage" class="btn-icon glass-btn-small"><i class="fas fa-angle-right"></i></button>
+                        <button id="btnLastPage" class="btn-icon glass-btn-small"><i class="fas fa-angle-double-right"></i></button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Modals -->
+        <!-- Login Modal -->
+        <div id="loginModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content glass-panel" style="max-width: 350px;">
+                <h3 class="mb-4 text-center">Login Admin</h3>
+                <input type="password" id="adminPassword" class="glass-input w-100 mb-4 text-center" placeholder="Masukkan Password (tekan Enter)" autocomplete="off">
+                <div class="modal-actions flex-between">
+                    <button class="btn-secondary w-100 mr-2" onclick="closeModal('loginModal')">Batal</button>
+                    <button id="submitLogin" class="btn-primary w-100 ml-2">Login</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Member Modal -->
+        <div id="memberModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content glass-panel modal-lg" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+                <h3 id="memberModalTitle" class="mb-4">Tambah Anggota</h3>
+                <form id="formMember">
+                    <input type="hidden" id="memRowIndex">
+                    <div class="grid-2-col gap-3 mb-3">
+                        <div class="form-group">
+                            <label class="block mb-1">ID (BARCODE)*</label>
+                            <input type="text" id="memId" class="glass-input w-100" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="block mb-1">NAMA LENGKAP*</label>
+                            <input type="text" id="memNama" class="glass-input w-100" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="block mb-1">URL FOTO</label>
+                            <input type="url" id="memFoto" class="glass-input w-100">
+                        </div>
+                        <div class="form-group">
+                            <label class="block mb-1">NAMA SEKOLAH</label>
+                            <input type="text" id="memSekolah" class="glass-input w-100">
+                        </div>
+                        <div class="form-group">
+                            <label class="block mb-1">KELAS</label>
+                            <input type="text" id="memKelas" class="glass-input w-100">
+                        </div>
+                        <div class="form-group">
+                            <label class="block mb-1">TEMPAT LAHIR</label>
+                            <input type="text" id="memLahir" class="glass-input w-100">
+                        </div>
+                        <div class="form-group">
+                            <label class="block mb-1">GOL. KEANGGOTAAN</label>
+                            <select id="memGol" class="glass-input w-100">
+                                <option value="Siaga">Siaga</option>
+                                <option value="Penggalang">Penggalang</option>
+                                <option value="Penegak">Penegak</option>
+                                <option value="Pandega">Pandega</option>
+                                <option value="Pembina">Pembina</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="block mb-1">KURSUS</label>
+                            <input type="text" id="memKursus" class="glass-input w-100">
+                        </div>
+                        <div class="form-group">
+                            <label class="block mb-1">GOL. DARAH</label>
+                            <input type="text" id="memDarah" class="glass-input w-100">
+                        </div>
+                        <div class="form-group">
+                            <label class="block mb-1">NO HP</label>
+                            <input type="text" id="memHp" class="glass-input w-100">
+                        </div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="block mb-1">ALAMAT</label>
+                        <textarea id="memAlamat" class="glass-input w-100" rows="2"></textarea>
+                    </div>
+                    <div class="form-group mb-4">
+                        <label class="block mb-1">ALAMAT EMAIL</label>
+                        <input type="email" id="memEmail" class="glass-input w-100">
+                    </div>
+                    <div class="modal-actions flex-row justify-end gap-2">
+                        <button type="button" class="btn-secondary" onclick="closeModal('memberModal')">Batal</button>
+                        <button type="submit" class="btn-primary">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Result Card Modal (After Scan) -->
+        <div id="resultModal" class="modal-overlay" style="display:none;">
+            <div class="modal-content glass-panel card-profile text-center" style="max-width: 320px;">
+                <div class="profile-image-container mx-auto mb-3" style="width: 120px; height: 120px; border-radius: 50%; overflow: hidden; border: 4px solid rgba(255,255,255,0.2);">
+                    <img id="resFoto" src="" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <h3 id="resNama" class="mb-1">Nama Lengkap</h3>
+                <span id="resGolongan" class="badge bg-primary px-3 py-1 mb-3 inline-block" style="border-radius: 20px; font-size: 0.8rem;">Golongan</span>
+                <div id="resStatus" class="status-box mt-3 text-success p-3 rounded" style="background: rgba(74, 222, 128, 0.1);">
+                    <i class="fas fa-check-circle" style="font-size: 2rem; display:block; margin-bottom: 10px;"></i>
+                    <span>Berhasil Absen</span>
+                </div>
+                <button class="btn-primary mt-4 w-100" onclick="closeModal('resultModal')">Tutup & Scan Lagi</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Print Canvas (Hidden from UI, used for printing report) -->
+    <div id="printArea" style="display:none;">
+        <div class="print-header text-center" style="margin-bottom: 20px;">
+            <h2 style="margin:0; font-size: 20px;">LAPORAN ABSENSI PRAMUKA</h2>
+            <h3 id="printDateRange" style="margin:5px 0; font-size: 14px; font-weight: normal;">Periode: Semua</h3>
+        </div>
+        <table class="excel-table" style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <thead style="background: #f0f0f0;">
+                <tr>
+                    <th style="border: 1px solid #000; padding: 6px;">No</th>
+                    <th style="border: 1px solid #000; padding: 6px;">Tanggal</th>
+                    <th style="border: 1px solid #000; padding: 6px;">Waktu</th>
+                    <th style="border: 1px solid #000; padding: 6px;">ID Barcode</th>
+                    <th style="border: 1px solid #000; padding: 6px;">Nama Lengkap</th>
+                    <th style="border: 1px solid #000; padding: 6px;">Golongan</th>
+                    <th style="border: 1px solid #000; padding: 6px;">Status</th>
+                </tr>
+            </thead>
+            <tbody id="printTableBody">
+            </tbody>
+        </table>
+        <div class="print-footer" style="display: flex; justify-content: flex-end;">
+            <div class="signature" style="text-align: center; width: 250px;">
+                <p style="margin:0;"><span id="printCity">Kota</span>, <span id="printCurrentDate">Tanggal</span></p>
+                <p style="margin:0;">Pimpinan,</p>
+                <br><br><br>
+                <p style="margin:0;"><u><strong id="printLeader">Nama Pimpinan</strong></u></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api-config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
