@@ -230,7 +230,6 @@ async function fetchSettings() {
         currentSettings = { ...currentSettings, ...res };
         
         // Update UI with settings
-        document.getElementById('leaderName').innerText = currentSettings.NAMA_PIMPINAN || 'Pimpinan';
         if(currentSettings.IMAGE_URL) {
             document.getElementById('mainLogo').src = currentSettings.IMAGE_URL;
             document.getElementById('mainLogo').style.display = 'inline-block';
