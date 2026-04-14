@@ -29,9 +29,11 @@ async function initApp() {
     });
 
     try {
-        await fetchSettings();
-        await fetchMembers();
-        await fetchAttendance();
+        await Promise.all([
+            fetchSettings(),
+            fetchMembers(),
+            fetchAttendance()
+        ]);
         updateStats();
         populateManualSelect();
         initScanner();
