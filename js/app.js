@@ -34,6 +34,10 @@ async function initApp() {
         updateStats();
         populateManualSelect();
         initScanner();
+        // Re-render laporan jika view laporan sedang aktif
+        if (document.getElementById('report-view').style.display !== 'none') {
+            renderReportTable();
+        }
     } catch (e) {
         Swal.fire('Error', 'Gagal memuat data dari Spreadsheet. Pastikan URL API sudah benar pada js/api-config.js', 'error');
         console.error(e);
