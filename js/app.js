@@ -587,16 +587,28 @@ function generatePrintView() {
 
     // Set Header
     const filterSel = document.getElementById('filterReportType');
-    document.getElementById('printDateRange').innerText = 'Periode: ' + filterSel.options[filterSel.selectedIndex].text;
+    const filterVal = filterSel.value;
+    const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const now = new Date();
+
+    let periodeText = filterSel.options[filterSel.selectedIndex].text;
+    if (filterVal === 'monthly') {
+        periodeText = `Bulanan - ${months[now.getMonth()]} ${now.getFullYear()}`;
+    } else if (filterVal === 'weekly') {
+        const tglAwal = new Date(now);
+        tglAwal.setDate(now.getDate() - 6);
+        periodeText = `Mingguan - ${tglAwal.getDate()} s/d ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+    } else if (filterVal === 'daily') {
+        periodeText = `Harian - ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+    }
+    document.getElementById('printDateRange').innerText = 'Periode: ' + periodeText;
     
     // Set Footer Settings
     document.getElementById('printCity').innerText = currentSettings.KOTA_TANDA_TANGAN || 'Jakarta';
     
     let tglTanda = currentSettings.TANGGAL_TANDA_TANGAN;
     if(tglTanda && tglTanda.toLowerCase().includes('otomatis')) {
-        const d = new Date();
-        const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-        tglTanda = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        tglTanda = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
     }
     document.getElementById('printCurrentDate').innerText = tglTanda || 'Tanggal';
     document.getElementById('printLeader').innerText = currentSettings.NAMA_PIMPINAN || 'Kak Pimpinan';
