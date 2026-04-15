@@ -398,7 +398,17 @@ function renderReportTable() {
 
     filteredData.forEach(rec => {
         let timeStr = rec["WAKTU"];
-        if(typeof timeStr !== 'string') timeStr = new String(timeStr).substring(11,19); // try to parse JS Date obj
+        // Format waktu: ambil HH:MM dari string ISO atau string biasa
+        try {
+            const t = new Date(timeStr);
+            if (!isNaN(t.getTime())) {
+                timeStr = t.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+            } else {
+                timeStr = String(timeStr).substring(11, 16);
+            }
+        } catch(e) {
+            timeStr = String(timeStr).substring(11, 16);
+        }
         
         let tr = document.createElement('tr');
         tr.innerHTML = `
