@@ -22,11 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initApp() {
-    Swal.fire({
-        title: 'Memuat Data...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
+    const loadingScreen = document.getElementById('loadingScreen');
+    loadingScreen.classList.remove('hidden');
 
     try {
         await Promise.all([
@@ -37,10 +34,11 @@ async function initApp() {
         updateStats();
         populateManualSelect();
         initScanner();
-        Swal.close();
     } catch (e) {
         Swal.fire('Error', 'Gagal memuat data dari Spreadsheet. Pastikan URL API sudah benar pada js/api-config.js', 'error');
         console.error(e);
+    } finally {
+        loadingScreen.classList.add('hidden');
     }
 }
 
