@@ -39,6 +39,10 @@ async function initApp() {
         console.error(e);
     } finally {
         loadingScreen.classList.add('hidden');
+        // Hentikan animasi setelah transisi selesai agar tidak bocor ke tampilan
+        loadingScreen.addEventListener('transitionend', () => {
+            loadingScreen.style.display = 'none';
+        }, { once: true });
     }
 }
 
