@@ -142,7 +142,14 @@ function setupEventListeners() {
     });
 
     // Report Filter
-    document.getElementById('filterReportType').addEventListener('change', renderReportTable);
+    document.getElementById('filterReportType').addEventListener('change', () => {
+        // Reset date range saat ganti filter preset
+        document.getElementById('filterDateFrom').value = '';
+        document.getElementById('filterDateTo').value = '';
+        renderReportTable();
+    });
+    document.getElementById('filterDateFrom').addEventListener('change', renderReportTable);
+    document.getElementById('filterDateTo').addEventListener('change', renderReportTable);
 
     // Member Management
     document.getElementById('btnAddMember').addEventListener('click', () => {
@@ -361,6 +368,8 @@ function renderReportTable() {
     tbody.innerHTML = '';
     
     const filter = document.getElementById('filterReportType').value;
+    const dateFrom = document.getElementById('filterDateFrom').value; // yyyy-mm-dd
+    const dateTo = document.getElementById('filterDateTo').value;     // yyyy-mm-dd
     const today = new Date();
     const tDay = today.getDate();
     const tMonth = today.getMonth();
@@ -368,22 +377,30 @@ function renderReportTable() {
     
     // Filter the attendance data
     let filteredData = attendance.filter(rec => {
-        if(filter === 'all') return true;
-        
-        let recDateStr = String(rec["TANGGAL"]).substring(0,10); // format yyyy-mm-dd
+        let recDateStr = String(rec["TANGGAL"]).substring(0, 10); // format yyyy-mm-dd
+
+        // Jika ada filter tanggal custom, prioritaskan
+        if (dateFrom || dateTo) {
+            if (dateFrom && recDateStr < dateFrom) return false;
+            if (dateTo && recDateStr > dateTo) return false;
+            return true;
+        }
+
+        if (filter === 'all') return true;
+
         let rDateParts = recDateStr.split('-');
-        if(rDateParts.length !== 3) return true; // fallback
-        
+        if (rDateParts.length !== 3) return true;
+
         let rYear = parseInt(rDateParts[0]);
         let rMonth = parseInt(rDateParts[1]) - 1;
         let rDay = parseInt(rDateParts[2]);
         let dDate = new Date(rYear, rMonth, rDay);
-        
-        if(filter === 'daily') {
+
+        if (filter === 'daily') {
             return (rDay === tDay && rMonth === tMonth && rYear === tYear);
-        } else if(filter === 'monthly') {
+        } else if (filter === 'monthly') {
             return (rMonth === tMonth && rYear === tYear);
-        } else if(filter === 'weekly') {
+        } else if (filter === 'weekly') {
             let diffT = today.getTime() - dDate.getTime();
             let diffDays = diffT / (1000 * 3600 * 24);
             return diffDays >= 0 && diffDays <= 7;
@@ -592,9 +609,9 @@ function generatePrintView() {
     const now = new Date();
 
     // Ambil rentang tanggal dari data yang tampil di tabel
-    const rows = document.querySelectorAll('#tableReport tbody tr');
+    const tabelRows = document.querySelectorAll('#tableReport tbody tr');
     let tanggalList = [];
-    rows.forEach(row => {
+    tabelRows.forEach(row => {
         if (row.cells.length > 1) {
             const tgl = row.cells[0].innerText.trim();
             if (tgl) tanggalList.push(new Date(tgl));
