@@ -332,10 +332,12 @@
 
     <!-- Print Canvas (Hidden from UI, used for printing report) -->
     <div id="printArea" style="display:none;">
-        <div class="print-header text-center" style="margin-bottom: 20px;">
-            <img id="printLogo" src="" alt="Logo" style="display:none; height: 70px; object-fit: contain; margin-bottom: 10px;">
-            <h2 style="margin:0; font-size: 20px;">LAPORAN ABSENSI BALADHIKA JAYA</h2>
-            <h3 id="printDateRange" style="margin:5px 0; font-size: 14px; font-weight: normal;">Periode: Semua</h3>
+        <div class="print-header" style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 20px;">
+            <img id="printLogo" src="" alt="Logo" style="display:none; height: 70px; object-fit: contain; flex-shrink: 0;">
+            <div style="text-align: center;">
+                <h2 style="margin:0; font-size: 20px;">LAPORAN ABSENSI BALADHIKA JAYA</h2>
+                <h3 id="printDateRange" style="margin:5px 0 0; font-size: 14px; font-weight: normal;">Periode: Semua</h3>
+            </div>
         </div>
         <table class="excel-table" style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
             <thead style="background: #f0f0f0;">
