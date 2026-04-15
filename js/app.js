@@ -605,41 +605,63 @@ function generatePrintView() {
     // Set Header
     const filterSel = document.getElementById('filterReportType');
     const filterVal = filterSel.value;
+    const dateFrom = document.getElementById('filterDateFrom').value;
+    const dateTo = document.getElementById('filterDateTo').value;
     const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     const now = new Date();
-
-    // Ambil rentang tanggal dari data yang tampil di tabel
-    const tabelRows = document.querySelectorAll('#tableReport tbody tr');
-    let tanggalList = [];
-    tabelRows.forEach(row => {
-        if (row.cells.length > 1) {
-            const tgl = row.cells[0].innerText.trim();
-            if (tgl) tanggalList.push(new Date(tgl));
-        }
-    });
-    tanggalList = tanggalList.filter(d => !isNaN(d)).sort((a, b) => a - b);
 
     function formatTgl(d) {
         return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
     }
 
-    let periodeText = filterSel.options[filterSel.selectedIndex].text;
-    if (tanggalList.length > 0) {
-        const awal = tanggalList[0];
-        const akhir = tanggalList[tanggalList.length - 1];
-        if (filterVal === 'monthly') {
-            periodeText = `Bulanan - ${months[awal.getMonth()]} ${awal.getFullYear()}`;
-        } else if (filterVal === 'daily') {
-            periodeText = `Harian - ${formatTgl(awal)}`;
-        } else if (awal.toDateString() === akhir.toDateString()) {
-            periodeText = `${filterSel.options[filterSel.selectedIndex].text} - ${formatTgl(awal)}`;
+    let periodeText;
+
+    // Jika filter custom tanggal aktif, gunakan tanggal yang dipilih user
+    if (dateFrom || dateTo) {
+        const tglAwal = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+        const tglAkhir = dateTo   ? new Date(dateTo   + 'T00:00:00') : null;
+        if (tglAwal && tglAkhir) {
+            if (tglAwal.toDateString() === tglAkhir.toDateString()) {
+                periodeText = formatTgl(tglAwal);
+            } else {
+                periodeText = `${formatTgl(tglAwal)} s/d ${formatTgl(tglAkhir)}`;
+            }
+        } else if (tglAwal) {
+            periodeText = `Dari ${formatTgl(tglAwal)}`;
         } else {
-            periodeText = `${filterSel.options[filterSel.selectedIndex].text} - ${formatTgl(awal)} s/d ${formatTgl(akhir)}`;
+            periodeText = `Sampai ${formatTgl(tglAkhir)}`;
         }
-    } else if (filterVal === 'monthly') {
-        periodeText = `Bulanan - ${months[now.getMonth()]} ${now.getFullYear()}`;
-    } else if (filterVal === 'daily') {
-        periodeText = `Harian - ${formatTgl(now)}`;
+    } else {
+        // Gunakan rentang dari data yang tampil di tabel
+        const tabelRows = document.querySelectorAll('#tableReport tbody tr');
+        let tanggalList = [];
+        tabelRows.forEach(row => {
+            if (row.cells.length > 1) {
+                const tgl = row.cells[0].innerText.trim();
+                if (tgl) tanggalList.push(new Date(tgl));
+            }
+        });
+        tanggalList = tanggalList.filter(d => !isNaN(d)).sort((a, b) => a - b);
+
+        if (tanggalList.length > 0) {
+            const awal = tanggalList[0];
+            const akhir = tanggalList[tanggalList.length - 1];
+            if (filterVal === 'monthly') {
+                periodeText = `Bulanan - ${months[awal.getMonth()]} ${awal.getFullYear()}`;
+            } else if (filterVal === 'daily') {
+                periodeText = `Harian - ${formatTgl(awal)}`;
+            } else if (awal.toDateString() === akhir.toDateString()) {
+                periodeText = `${filterSel.options[filterSel.selectedIndex].text} - ${formatTgl(awal)}`;
+            } else {
+                periodeText = `${filterSel.options[filterSel.selectedIndex].text} - ${formatTgl(awal)} s/d ${formatTgl(akhir)}`;
+            }
+        } else if (filterVal === 'monthly') {
+            periodeText = `Bulanan - ${months[now.getMonth()]} ${now.getFullYear()}`;
+        } else if (filterVal === 'daily') {
+            periodeText = `Harian - ${formatTgl(now)}`;
+        } else {
+            periodeText = filterSel.options[filterSel.selectedIndex].text;
+        }
     }
 
     document.getElementById('printDateRange').innerText = 'Periode: ' + periodeText;
