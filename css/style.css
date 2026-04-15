@@ -334,7 +334,7 @@ body {
 /* Print Styles */
 @media print {
     body * { visibility: hidden; }
+    #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: #fff; color: #000; padding: 20px; }
     #printArea, #printArea * { visibility: visible; }
-    #printArea { position: absolute; left: 0; top: 0; width: 100%; background: #fff; color: #000; padding: 20px;}
     .excel-table th, .excel-table td { border: 1px solid #000; padding: 8px; font-size: 12px; }
 }
