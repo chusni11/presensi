@@ -398,11 +398,13 @@ function renderReportTable() {
 
     filteredData.forEach(rec => {
         let timeStr = rec["WAKTU"];
-        // Format waktu: ambil HH:MM dari string ISO atau string biasa
+        // Format waktu: ambil HH:MM saja
         try {
             const t = new Date(timeStr);
             if (!isNaN(t.getTime())) {
-                timeStr = t.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+                const hh = String(t.getUTCHours()).padStart(2, '0');
+                const mm = String(t.getUTCMinutes()).padStart(2, '0');
+                timeStr = `${hh}:${mm}`;
             } else {
                 timeStr = String(timeStr).substring(11, 16);
             }
