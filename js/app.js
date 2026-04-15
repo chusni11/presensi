@@ -668,6 +668,15 @@ function generatePrintView() {
     
     // Set Footer Settings
     document.getElementById('printCity').innerText = currentSettings.KOTA_TANDA_TANGAN || 'Jakarta';
+
+    // Set logo print
+    const printLogo = document.getElementById('printLogo');
+    if (currentSettings.IMAGE_URL) {
+        printLogo.src = currentSettings.IMAGE_URL;
+        printLogo.style.display = 'block';
+    } else {
+        printLogo.style.display = 'none';
+    }
     
     let tglTanda = currentSettings.TANGGAL_TANDA_TANGAN;
     if(tglTanda && tglTanda.toLowerCase().includes('otomatis')) {
