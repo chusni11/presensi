@@ -260,7 +260,13 @@ async function fetchSettings() {
 
 async function fetchMembers() {
     try {
-        members = await callAPI('getMembers');
+        const data = await callAPI('getMembers');
+        members = data;
+        // Debug: cek struktur data pertama jika ada
+        if (members.length > 0) {
+            console.log('[Debug] Contoh data anggota pertama:', JSON.stringify(members[0]));
+            console.log('[Debug] Keys yang tersedia:', Object.keys(members[0]));
+        }
     } catch(e) {}
 }
 
@@ -478,16 +484,19 @@ function renderMembersTable() {
 
     paginated.forEach((m, idx) => {
         let imgUrl = m["URL FOTO"] || 'https://via.placeholder.com/50';
+        let nama = m["NAMA LENGKAP"] || m["NAMA"] || '(Nama tidak tersedia)';
+        let idBarcode = m["ID (BARCODE)"] || '-';
+        let golongan = m["GOL. KEANGGOTAAN"] || '-';
         let tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${startIdx + idx + 1}</td>
             <td><img src="${imgUrl}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;"></td>
-            <td>${m["ID (BARCODE)"]}</td>
-            <td>${m["NAMA LENGKAP"]}</td>
-            <td>${m["GOL. KEANGGOTAAN"]}</td>
+            <td>${idBarcode}</td>
+            <td>${nama}</td>
+            <td>${golongan}</td>
             <td>
-                <button class="btn-icon text-primary" onclick="editMemberModal('${m["ID (BARCODE)"]}')"><i class="fas fa-edit"></i></button>
-                <button class="btn-icon text-danger" onclick="removeMember('${m["ID (BARCODE)"]}')"><i class="fas fa-trash"></i></button>
+                <button class="btn-icon text-primary" onclick="editMemberModal('${idBarcode}')"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon text-danger" onclick="removeMember('${idBarcode}')"><i class="fas fa-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);
