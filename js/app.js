@@ -25,6 +25,11 @@ async function initApp() {
     const loadingScreen = document.getElementById('loadingScreen');
     loadingScreen.classList.remove('hidden');
 
+    // Pulihkan status login dari session sebelumnya
+    if (sessionStorage.getItem('isAdmin') === 'true') {
+        isAdmin = true;
+    }
+
     try {
         await Promise.all([
             fetchSettings(),
@@ -33,6 +38,7 @@ async function initApp() {
         ]);
         updateStats();
         populateManualSelect();
+        updateVisibility();
         initScanner();
         // Re-render laporan jika view laporan sedang aktif
         if (document.getElementById('report-view').style.display !== 'none') {
@@ -91,6 +97,7 @@ function setupEventListeners() {
 
     document.getElementById('btnLogout').addEventListener('click', () => {
         isAdmin = false;
+        sessionStorage.removeItem('isAdmin');
         updateVisibility();
         Swal.fire('Logout', 'Anda telah keluar dari mode admin.', 'info');
         document.querySelector('[data-target="scan-view"]').click();
@@ -99,6 +106,7 @@ function setupEventListeners() {
     const attemptLogin = () => {
         if(inputPassword.value === currentSettings.ADMIN_PASSWORD) {
             isAdmin = true;
+            sessionStorage.setItem('isAdmin', 'true');
             inputPassword.value = '';
             closeModal('loginModal');
             updateVisibility();
