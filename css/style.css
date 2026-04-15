@@ -86,6 +86,7 @@
     stroke-dasharray: 314;
     stroke-dashoffset: 314;
     animation: ringFill 2s ease-in-out infinite;
+    animation-fill-mode: forwards;
 }
 @keyframes ringFill {
     0%   { stroke-dashoffset: 314; opacity: 1; }
