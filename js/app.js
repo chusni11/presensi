@@ -398,18 +398,18 @@ function renderReportTable() {
 
     filteredData.forEach(rec => {
         let timeStr = rec["WAKTU"];
-        // Format waktu: ambil HH:MM saja
-        try {
-            const t = new Date(timeStr);
-            if (!isNaN(t.getTime())) {
-                const hh = String(t.getUTCHours()).padStart(2, '0');
-                const mm = String(t.getUTCMinutes()).padStart(2, '0');
-                timeStr = `${hh}:${mm}`;
-            } else {
+        // Data dari GS sudah HH:mm, fallback jika masih ISO string
+        if (timeStr && String(timeStr).length > 5) {
+            try {
+                const t = new Date(timeStr);
+                if (!isNaN(t.getTime())) {
+                    timeStr = String(t.getUTCHours()).padStart(2, '0') + ':' + String(t.getUTCMinutes()).padStart(2, '0');
+                } else {
+                    timeStr = String(timeStr).substring(11, 16);
+                }
+            } catch(e) {
                 timeStr = String(timeStr).substring(11, 16);
             }
-        } catch(e) {
-            timeStr = String(timeStr).substring(11, 16);
         }
         
         let tr = document.createElement('tr');
