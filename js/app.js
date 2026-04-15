@@ -264,20 +264,38 @@ async function fetchAttendance() {
 }
 
 async function submitAttendance(id, status = 'Hadir') {
-    Swal.fire({ title: 'Memproses...', didOpen: () => Swal.showLoading()});
+    // Tampilkan loading ringan tanpa SweetAlert
+    const btnSubmit = document.getElementById('btnSubmitBarcode');
+    if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
     try {
         const result = await callAPI('scanBarcode', { id: id, status: status });
-        Swal.close();
+
         if(result.status === 'success' || result.status === 'info') {
-            await fetchAttendance(); // refresh logic
+            // Update lokal tanpa fetch ulang ke server
+            if (result.status === 'success' && result.member) {
+                const now = new Date();
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                const dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+                attendance.push({
+                    "TANGGAL": dateStr,
+                    "WAKTU": `${hh}:${mm}`,
+                    "ID (BARCODE)": result.member["ID (BARCODE)"],
+                    "NAMA LENGKAP": result.member["NAMA LENGKAP"],
+                    "GOL. KEANGGOTAAN": result.member["GOL. KEANGGOTAAN"],
+                    "STATUS": status
+                });
+            }
             updateStats();
             showResultModal(result.member, result.status === 'info' ? 'Sudah Absen' : 'Berhasil Absen');
-            if(result.status === 'info') Swal.fire('Info', result.message, 'info');
         } else {
             Swal.fire('Gagal', result.message, 'error');
         }
     } catch(e) {
         Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+    } finally {
+        if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = 'Kirim'; }
     }
 }
 
