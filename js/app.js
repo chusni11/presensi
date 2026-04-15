@@ -591,16 +591,40 @@ function generatePrintView() {
     const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     const now = new Date();
 
-    let periodeText = filterSel.options[filterSel.selectedIndex].text;
-    if (filterVal === 'monthly') {
-        periodeText = `Bulanan - ${months[now.getMonth()]} ${now.getFullYear()}`;
-    } else if (filterVal === 'weekly') {
-        const tglAwal = new Date(now);
-        tglAwal.setDate(now.getDate() - 6);
-        periodeText = `Mingguan - ${tglAwal.getDate()} s/d ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
-    } else if (filterVal === 'daily') {
-        periodeText = `Harian - ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+    // Ambil rentang tanggal dari data yang tampil di tabel
+    const rows = document.querySelectorAll('#tableReport tbody tr');
+    let tanggalList = [];
+    rows.forEach(row => {
+        if (row.cells.length > 1) {
+            const tgl = row.cells[0].innerText.trim();
+            if (tgl) tanggalList.push(new Date(tgl));
+        }
+    });
+    tanggalList = tanggalList.filter(d => !isNaN(d)).sort((a, b) => a - b);
+
+    function formatTgl(d) {
+        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
     }
+
+    let periodeText = filterSel.options[filterSel.selectedIndex].text;
+    if (tanggalList.length > 0) {
+        const awal = tanggalList[0];
+        const akhir = tanggalList[tanggalList.length - 1];
+        if (filterVal === 'monthly') {
+            periodeText = `Bulanan - ${months[awal.getMonth()]} ${awal.getFullYear()}`;
+        } else if (filterVal === 'daily') {
+            periodeText = `Harian - ${formatTgl(awal)}`;
+        } else if (awal.toDateString() === akhir.toDateString()) {
+            periodeText = `${filterSel.options[filterSel.selectedIndex].text} - ${formatTgl(awal)}`;
+        } else {
+            periodeText = `${filterSel.options[filterSel.selectedIndex].text} - ${formatTgl(awal)} s/d ${formatTgl(akhir)}`;
+        }
+    } else if (filterVal === 'monthly') {
+        periodeText = `Bulanan - ${months[now.getMonth()]} ${now.getFullYear()}`;
+    } else if (filterVal === 'daily') {
+        periodeText = `Harian - ${formatTgl(now)}`;
+    }
+
     document.getElementById('printDateRange').innerText = 'Periode: ' + periodeText;
     
     // Set Footer Settings
