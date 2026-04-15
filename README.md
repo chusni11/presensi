@@ -25,7 +25,7 @@ Terdiri dari frontend (dihosting di GitHub Pages) dan backend (Google Apps Scrip
 8. Salin **URL Aplikasi Web (Web App URL)** yang dihasilkan.
 
 ### Tahap 3: Konfigurasi Frontend
-1. Buka file `js/api-config.js` di dalam proyek ini.
+1. Buka file `js/api-config.js` di dalam proyek ini untuk sinkron database ke spreadsheet.
 2. Ganti teks `AKfycbz_YOUR_SCRIPT_ID_HERE` dengan URL Aplikasi Web (Web App URL) yang baru Anda salin dari langkah sebelumnya.
    ```javascript
    const SCRIPT_URL = "https://script.google.com/macros/s/AKfy.../exec"; 
