@@ -81,6 +81,10 @@ function setupEventListeners() {
             }
 
             if(targetId === 'report-view') renderReportTable();
+            if(targetId === 'manual-view') {
+                document.getElementById('searchAnggotaAbsen').value = '';
+                clearManualMember();
+            }
             if(targetId === 'admin-view') {
                 currentPage = 1;
                 renderMembersTable();
@@ -131,6 +135,14 @@ function setupEventListeners() {
         const status = document.getElementById('selectStatus').value;
         if(memId) submitAttendance(memId, status);
     });
+
+    // Search anggota di manual absen
+    document.getElementById('searchAnggotaAbsen').addEventListener('input', (e) => {
+        renderManualMemberList(e.target.value);
+    });
+
+    // Clear selected member
+    document.getElementById('btnClearSelected').addEventListener('click', clearManualMember);
 
     // Sync button
     document.getElementById('btnSyncReport').addEventListener('click', initApp);
@@ -208,11 +220,11 @@ function updateStats() {
 
     // Golongan config: name, icon, color
     const golonganList = [
-        { name: 'Siaga',     icon: 'fa-child',        color: '#f59e0b' },
-        { name: 'Penggalang',icon: 'fa-hiking',        color: '#3b82f6' },
-        { name: 'Penegak',   icon: 'fa-user-shield',   color: '#8b5cf6' },
-        { name: 'Pandega',   icon: 'fa-user-graduate', color: '#ec4899' },
-        { name: 'Pembina',   icon: 'fa-chalkboard-teacher', color: '#10b981' },
+        { name: 'Siaga',     icon: 'fa-child',             color: '#22c55e' },
+        { name: 'Penggalang',icon: 'fa-hiking',             color: '#ef4444' },
+        { name: 'Penegak',   icon: 'fa-user-shield',        color: '#eab308' },
+        { name: 'Pandega',   icon: 'fa-user-graduate',      color: '#f97316' },
+        { name: 'Pembina',   icon: 'fa-chalkboard-teacher', color: '#a855f7' },
     ];
 
     // Count total members per golongan
@@ -415,14 +427,79 @@ async function removeMember(id) {
 // =======================
 
 function populateManualSelect() {
-    const sel = document.getElementById('selectAnggotaAbsen');
-    sel.innerHTML = '<option value="">-- Pilih Anggota --</option>';
-    members.forEach(m => {
-        let opt = document.createElement('option');
-        opt.value = m["ID (BARCODE)"];
-        opt.innerText = `${m["ID (BARCODE)"]} - ${m["NAMA LENGKAP"]}`;
-        sel.appendChild(opt);
+    renderManualMemberList('');
+}
+
+function renderManualMemberList(query) {
+    const container = document.getElementById('listAnggotaAbsen');
+    if (!container) return;
+    const q = query.toLowerCase().trim();
+    const filtered = q
+        ? members.filter(m =>
+            (m["NAMA LENGKAP"] || '').toLowerCase().includes(q) ||
+            (m["ID (BARCODE)"] || '').toLowerCase().includes(q))
+        : members;
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div style="padding:16px; text-align:center; opacity:0.5; font-size:0.85rem;">Anggota tidak ditemukan</div>`;
+        return;
+    }
+
+    const selectedId = document.getElementById('selectAnggotaAbsen').value;
+    container.innerHTML = '';
+    filtered.forEach(m => {
+        const id = m["ID (BARCODE)"];
+        const nama = m["NAMA LENGKAP"] || '-';
+        const gol = m["GOL. KEANGGOTAAN"] || '-';
+        const foto = m["URL FOTO"] || 'https://via.placeholder.com/40';
+        const isSelected = id === selectedId;
+
+        const item = document.createElement('div');
+        item.className = 'manual-member-item';
+        item.dataset.id = id;
+        item.style.cssText = `
+            display:flex; align-items:center; gap:10px; padding:10px 14px;
+            cursor:pointer; border-bottom:1px solid var(--glass-border);
+            transition:background 0.2s;
+            background: ${isSelected ? 'rgba(59,130,246,0.2)' : 'transparent'};
+        `;
+        item.innerHTML = `
+            <img src="${foto}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:${isSelected?'700':'500'}; font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${highlightText(nama, q)}</div>
+                <div style="font-size:0.72rem; opacity:0.6;">${highlightText(id, q)} &bull; ${gol}</div>
+            </div>
+            ${isSelected ? '<i class="fas fa-check-circle" style="color:var(--primary-color);"></i>' : ''}
+        `;
+        item.addEventListener('click', () => selectManualMember(m));
+        item.addEventListener('mouseenter', () => { if (id !== selectedId) item.style.background = 'rgba(255,255,255,0.05)'; });
+        item.addEventListener('mouseleave', () => { if (id !== selectedId) item.style.background = 'transparent'; });
+        container.appendChild(item);
     });
+}
+
+function highlightText(text, query) {
+    if (!query) return text;
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return String(text).replace(regex, '<mark style="background:rgba(59,130,246,0.4);color:inherit;border-radius:2px;padding:0 2px;">$1</mark>');
+}
+
+function selectManualMember(m) {
+    document.getElementById('selectAnggotaAbsen').value = m["ID (BARCODE)"];
+    document.getElementById('previewFoto').src = m["URL FOTO"] || 'https://via.placeholder.com/44';
+    document.getElementById('previewNama').innerText = m["NAMA LENGKAP"] || '-';
+    document.getElementById('previewInfo').innerText = `${m["ID (BARCODE)"]} · ${m["GOL. KEANGGOTAAN"] || '-'}`;
+    document.getElementById('selectedMemberPreview').style.display = 'block';
+    document.getElementById('btnSubmitManual').disabled = false;
+    // Re-render list to show checkmark
+    renderManualMemberList(document.getElementById('searchAnggotaAbsen').value);
+}
+
+function clearManualMember() {
+    document.getElementById('selectAnggotaAbsen').value = '';
+    document.getElementById('selectedMemberPreview').style.display = 'none';
+    document.getElementById('btnSubmitManual').disabled = true;
+    renderManualMemberList(document.getElementById('searchAnggotaAbsen').value);
 }
 
 function renderReportTable() {
