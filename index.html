@@ -60,20 +60,28 @@
         </header>
 
         <!-- Stats Panel -->
-        <div class="stats-panel glass-panel mt-3 mb-3" style="display: flex; gap: 15px;">
-            <div class="stat-item flex-1">
-                <i class="fas fa-users" style="color: #60a5fa; font-size: 2rem; margin-bottom: 5px;"></i>
-                <div class="stat-details text-center">
-                    <span id="totalMembers" style="font-size: 1.5rem; font-weight: bold; display: block;">0</span>
-                    <label style="font-size: 0.8rem; opacity: 0.8;">Total Anggota</label>
+        <div class="stats-panel glass-panel mt-3 mb-3">
+            <!-- Row 1: Total Anggota & Hadir Hari Ini -->
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div class="stat-item flex-1">
+                    <i class="fas fa-users" style="color: #60a5fa; font-size: 2rem; margin-bottom: 5px;"></i>
+                    <div class="stat-details text-center">
+                        <span id="totalMembers" style="font-size: 1.5rem; font-weight: bold; display: block;">0</span>
+                        <label style="font-size: 0.8rem; opacity: 0.8;">Total Anggota</label>
+                    </div>
+                </div>
+                <div class="stat-item flex-1">
+                    <i class="fas fa-user-check" style="color: #4ade80; font-size: 2rem; margin-bottom: 5px;"></i>
+                    <div class="stat-details text-center">
+                        <span id="totalHadir" style="font-size: 1.5rem; font-weight: bold; display: block;">0</span>
+                        <label style="font-size: 0.8rem; opacity: 0.8;">Hadir Hari Ini</label>
+                    </div>
                 </div>
             </div>
-            <div class="stat-item flex-1">
-                <i class="fas fa-user-check" style="color: #4ade80; font-size: 2rem; margin-bottom: 5px;"></i>
-                <div class="stat-details text-center">
-                    <span id="totalHadir" style="font-size: 1.5rem; font-weight: bold; display: block;">0</span>
-                    <label style="font-size: 0.8rem; opacity: 0.8;">Hadir Hari Ini</label>
-                </div>
+            <!-- Row 2: Breakdown per Golongan -->
+            <div style="border-top: 1px solid var(--glass-border); padding-top: 12px;">
+                <p style="font-size: 0.75rem; opacity: 0.6; text-align: center; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Presensi Hari Ini per Golongan</p>
+                <div id="golonganStats" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;"></div>
             </div>
         </div>
 
