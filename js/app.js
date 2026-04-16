@@ -223,21 +223,27 @@ function updateStats() {
         if (totalPerGol.hasOwnProperty(gol)) totalPerGol[gol]++;
     });
 
-    // Count hadir today per golongan
+    // Build member lookup map: ID -> golongan
+    const memberGolMap = {};
+    members.forEach(m => {
+        memberGolMap[m["ID (BARCODE)"]] = m["GOL. KEANGGOTAAN"];
+    });
+
+    // Count hadir today per golongan (lookup golongan dari members jika tidak ada di attendance)
     const hadirPerGol = {};
     golonganList.forEach(g => hadirPerGol[g.name] = 0);
     attendance.forEach(rec => {
         const str = String(rec["TANGGAL"]).substring(0, 10);
         if (str === dateStr) {
             countHadir++;
-            const gol = rec["GOL. KEANGGOTAAN"];
+            const gol = rec["GOL. KEANGGOTAAN"] || memberGolMap[rec["ID (BARCODE)"]] || '';
             if (hadirPerGol.hasOwnProperty(gol)) hadirPerGol[gol]++;
         }
     });
 
     document.getElementById('totalHadir').innerText = countHadir;
 
-    // Render golongan breakdown
+    // Render golongan breakdown — selalu tampil semua golongan
     const container = document.getElementById('golonganStats');
     container.innerHTML = '';
     golonganList.forEach(g => {
@@ -246,17 +252,20 @@ function updateStats() {
         const pct = total > 0 ? Math.round((hadir / total) * 100) : 0;
         const card = document.createElement('div');
         card.style.cssText = `
-            flex: 1; min-width: 90px; background: rgba(15,23,42,0.5);
-            border: 1px solid ${g.color}40; border-radius: 10px;
+            flex: 1; min-width: 85px; background: rgba(15,23,42,0.5);
+            border: 1px solid ${g.color}50; border-radius: 10px;
             padding: 8px 6px; text-align: center;
         `;
         card.innerHTML = `
             <i class="fas ${g.icon}" style="color:${g.color}; font-size:1.1rem; margin-bottom:4px; display:block;"></i>
-            <div style="font-size:1rem; font-weight:700; color:${g.color};">${hadir}<span style="font-size:0.7rem; opacity:0.7; font-weight:400;">/${total}</span></div>
-            <div style="font-size:0.65rem; opacity:0.7; margin-bottom:4px;">${g.name}</div>
-            <div style="background: rgba(255,255,255,0.1); border-radius:4px; height:4px; overflow:hidden;">
-                <div style="width:${pct}%; height:100%; background:${g.color}; border-radius:4px; transition:width 0.5s;"></div>
+            <div style="font-size:1.1rem; font-weight:700; color:${g.color}; line-height:1.2;">
+                ${hadir}<span style="font-size:0.75rem; opacity:0.6; font-weight:400;">/${total}</span>
             </div>
+            <div style="font-size:0.65rem; opacity:0.65; margin: 3px 0 5px;">${g.name}</div>
+            <div style="background: rgba(255,255,255,0.1); border-radius:4px; height:4px; overflow:hidden;">
+                <div style="width:${pct}%; height:100%; background:${g.color}; border-radius:4px; transition:width 0.6s ease;"></div>
+            </div>
+            <div style="font-size:0.6rem; opacity:0.5; margin-top:3px;">${pct}%</div>
         `;
         container.appendChild(card);
     });
