@@ -126,13 +126,34 @@
             <section id="manual-view" class="view" style="display:none;">
                 <div class="glass-panel">
                     <h2 class="mb-4"><i class="fas fa-edit"></i> Absen Manual (Ijin/Sakit/Alpa)</h2>
-                    <form id="formManualAbsen" class="glass-form space-y">
-                        <div class="form-group mb-3">
-                            <label class="block mb-2">Pilih Anggota</label>
-                            <select id="selectAnggotaAbsen" class="glass-input w-100" required>
-                                <option value="">-- Pilih Anggota --</option>
-                            </select>
+                    
+                    <!-- Search Box -->
+                    <div class="flex-row mb-3" style="gap:8px;">
+                        <div style="position:relative; flex:1;">
+                            <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:0.5;"></i>
+                            <input type="text" id="searchAnggotaAbsen" placeholder="Cari nama atau ID anggota..." class="glass-input w-100" style="padding-left:36px;">
                         </div>
+                    </div>
+
+                    <!-- Member List -->
+                    <div id="listAnggotaAbsen" style="max-height:280px; overflow-y:auto; border:1px solid var(--glass-border); border-radius:10px; margin-bottom:16px;">
+                        <!-- populated by JS -->
+                    </div>
+
+                    <!-- Selected Member Preview -->
+                    <div id="selectedMemberPreview" style="display:none; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); border-radius:10px; padding:12px; margin-bottom:16px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <img id="previewFoto" src="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid rgba(59,130,246,0.5);">
+                            <div>
+                                <div id="previewNama" style="font-weight:600; font-size:0.95rem;"></div>
+                                <div id="previewInfo" style="font-size:0.75rem; opacity:0.7;"></div>
+                            </div>
+                            <button type="button" id="btnClearSelected" style="margin-left:auto; background:none; border:none; color:var(--danger-color); cursor:pointer; font-size:1rem;"><i class="fas fa-times-circle"></i></button>
+                        </div>
+                    </div>
+
+                    <form id="formManualAbsen" class="glass-form space-y">
+                        <input type="hidden" id="selectAnggotaAbsen">
                         <div class="form-group mb-4">
                             <label class="block mb-2">Status Kehadiran</label>
                             <select id="selectStatus" class="glass-input w-100" required>
@@ -141,11 +162,11 @@
                                 <option value="Alpa">Alpa</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn-primary w-100">Simpan Absen</button>
+                        <button type="submit" class="btn-primary w-100" id="btnSubmitManual" disabled>
+                            <i class="fas fa-save"></i> Simpan Absen
+                        </button>
                     </form>
                 </div>
-            </section>
-
             <!-- 3. Report View -->
             <section id="report-view" class="view" style="display:none;">
                 <div class="glass-panel">
