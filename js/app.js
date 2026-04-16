@@ -205,14 +205,61 @@ function updateStats() {
     const today = new Date();
     const dateStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
     let countHadir = 0;
-    
-    attendance.forEach(rec => {
-        let recDate = rec["TANGGAL"]; // From GS format string
-        // Simple string matching. GS formats date as yyyy-MM-dd usually based on Utilities.formatDate
-        let str = new String(recDate).substring(0,10);
-        if(str === dateStr) countHadir++;
+
+    // Golongan config: name, icon, color
+    const golonganList = [
+        { name: 'Siaga',     icon: 'fa-child',        color: '#f59e0b' },
+        { name: 'Penggalang',icon: 'fa-hiking',        color: '#3b82f6' },
+        { name: 'Penegak',   icon: 'fa-user-shield',   color: '#8b5cf6' },
+        { name: 'Pandega',   icon: 'fa-user-graduate', color: '#ec4899' },
+        { name: 'Pembina',   icon: 'fa-chalkboard-teacher', color: '#10b981' },
+    ];
+
+    // Count total members per golongan
+    const totalPerGol = {};
+    golonganList.forEach(g => totalPerGol[g.name] = 0);
+    members.forEach(m => {
+        const gol = m["GOL. KEANGGOTAAN"];
+        if (totalPerGol.hasOwnProperty(gol)) totalPerGol[gol]++;
     });
+
+    // Count hadir today per golongan
+    const hadirPerGol = {};
+    golonganList.forEach(g => hadirPerGol[g.name] = 0);
+    attendance.forEach(rec => {
+        const str = String(rec["TANGGAL"]).substring(0, 10);
+        if (str === dateStr) {
+            countHadir++;
+            const gol = rec["GOL. KEANGGOTAAN"];
+            if (hadirPerGol.hasOwnProperty(gol)) hadirPerGol[gol]++;
+        }
+    });
+
     document.getElementById('totalHadir').innerText = countHadir;
+
+    // Render golongan breakdown
+    const container = document.getElementById('golonganStats');
+    container.innerHTML = '';
+    golonganList.forEach(g => {
+        const hadir = hadirPerGol[g.name];
+        const total = totalPerGol[g.name];
+        const pct = total > 0 ? Math.round((hadir / total) * 100) : 0;
+        const card = document.createElement('div');
+        card.style.cssText = `
+            flex: 1; min-width: 90px; background: rgba(15,23,42,0.5);
+            border: 1px solid ${g.color}40; border-radius: 10px;
+            padding: 8px 6px; text-align: center;
+        `;
+        card.innerHTML = `
+            <i class="fas ${g.icon}" style="color:${g.color}; font-size:1.1rem; margin-bottom:4px; display:block;"></i>
+            <div style="font-size:1rem; font-weight:700; color:${g.color};">${hadir}<span style="font-size:0.7rem; opacity:0.7; font-weight:400;">/${total}</span></div>
+            <div style="font-size:0.65rem; opacity:0.7; margin-bottom:4px;">${g.name}</div>
+            <div style="background: rgba(255,255,255,0.1); border-radius:4px; height:4px; overflow:hidden;">
+                <div style="width:${pct}%; height:100%; background:${g.color}; border-radius:4px; transition:width 0.5s;"></div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
 }
 
 // =======================
