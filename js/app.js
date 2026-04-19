@@ -217,6 +217,26 @@ function updateVisibility() {
     }
 }
 
+/**
+ * Normalisasi ID barcode: selalu kembalikan string.
+ * Jika ID di spreadsheet kehilangan leading zero (tersimpan sebagai number),
+ * cocokkan dengan ID canonical dari data anggota.
+ * Contoh: "123" -> "0123" jika anggota punya ID "0123"
+ */
+function normalizeId(rawId) {
+    const str = String(rawId).trim();
+    // Cek apakah ada anggota dengan ID exact
+    const exact = members.find(m => String(m["ID (BARCODE)"]) === str);
+    if (exact) return str;
+    // Fallback: cocokkan secara numerik (toleransi leading zero hilang)
+    const num = parseFloat(str);
+    if (!isNaN(num)) {
+        const byNum = members.find(m => parseFloat(m["ID (BARCODE)"]) === num);
+        if (byNum) return String(byNum["ID (BARCODE)"]);
+    }
+    return str;
+}
+
 function updateStats() {
     document.getElementById('totalMembers').innerText = members.length;
     
@@ -255,7 +275,7 @@ function updateStats() {
         const str = String(rec["TANGGAL"]).substring(0, 10);
         if (str === dateStr) {
             countHadir++;
-            const gol = rec["GOL. KEANGGOTAAN"] || memberGolMap[rec["ID (BARCODE)"]] || '';
+            const gol = rec["GOL. KEANGGOTAAN"] || memberGolMap[normalizeId(rec["ID (BARCODE)"])] || '';
             if (hadirPerGol.hasOwnProperty(gol)) hadirPerGol[gol]++;
         }
     });
@@ -313,7 +333,7 @@ function showGolonganModal(g, dateStr, hadirPerGol, totalPerGol, memberGolMap) {
     const absenHariIni = {};
     attendance.forEach(rec => {
         if (String(rec["TANGGAL"]).substring(0, 10) === dateStr) {
-            absenHariIni[String(rec["ID (BARCODE)"])] = rec["STATUS"] || 'Hadir';
+            absenHariIni[normalizeId(rec["ID (BARCODE)"])] = rec["STATUS"] || 'Hadir';
         }
     });
 
@@ -449,9 +469,9 @@ function renderRecentAttendance() {
 
     container.innerHTML = '';
     todayAttendance.forEach((rec, idx) => {
-        const id     = rec["ID (BARCODE)"];
-        const nama   = rec["NAMA LENGKAP"] || '-';
-        const gol    = rec["GOL. KEANGGOTAAN"] || '-';
+        const id     = normalizeId(rec["ID (BARCODE)"]);
+        const nama   = rec["NAMA LENGKAP"] || (memberMap[id] && memberMap[id]["NAMA LENGKAP"]) || '-';
+        const gol    = rec["GOL. KEANGGOTAAN"] || (memberMap[id] && memberMap[id]["GOL. KEANGGOTAAN"]) || '-';
         const status = rec["STATUS"] || 'Hadir';
         const waktu  = String(rec["WAKTU"] || '').substring(0, 5) || '--:--';
         const foto   = (memberMap[id] && memberMap[id]["URL FOTO"]) || 'https://via.placeholder.com/40';
@@ -655,7 +675,7 @@ function renderManualMemberList(query) {
     const absenHariIni = new Set(
         attendance
             .filter(rec => String(rec["TANGGAL"]).substring(0, 10) === dateStr)
-            .map(rec => String(rec["ID (BARCODE)"]))
+            .map(rec => normalizeId(rec["ID (BARCODE)"]))
     );
 
     // Filter: belum absen hari ini, lalu filter query pencarian
