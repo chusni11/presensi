@@ -207,6 +207,22 @@
                         <button id="btnPrintReport" class="btn-secondary"><i class="fas fa-print"></i> Cetak</button>
                     </div>
 
+                    <!-- Ringkasan Statistik Periode -->
+                    <div id="reportSummary" style="display:none; margin-bottom:16px;">
+                        <!-- Stat cards -->
+                        <div id="reportStatCards" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;"></div>
+                        <!-- Rekap per anggota -->
+                        <div style="border:1px solid var(--glass-border); border-radius:10px; overflow:hidden;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--glass-border); background:rgba(255,255,255,0.03);">
+                                <span style="font-size:0.82rem; font-weight:600; opacity:0.8;">
+                                    <i class="fas fa-users" style="margin-right:6px; color:#60a5fa;"></i>Rekap Kehadiran per Anggota
+                                </span>
+                                <span id="reportPeriodLabel" style="font-size:0.72rem; opacity:0.5;"></span>
+                            </div>
+                            <div id="reportMemberSummary" style="max-height:260px; overflow-y:auto;"></div>
+                        </div>
+                    </div>
+
                     <div class="table-responsive">
                         <table id="tableReport" class="glass-table w-100">
                             <thead>
