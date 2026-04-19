@@ -126,10 +126,7 @@
                 <div class="glass-panel">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                         <h2 class="page-title" style="margin:0;"><i class="fas fa-chart-bar"></i>Laporan</h2>
-                        <div style="display:flex;gap:6px;">
-                            <button id="btnStatistik" class="btn-primary" style="padding:7px 12px;font-size:0.8rem;"><i class="fas fa-chart-pie"></i> Statistik</button>
-                            <button id="btnSyncReport" class="btn-success" style="padding:7px 12px;font-size:0.8rem;"><i class="fas fa-sync"></i></button>
-                        </div>
+                        <button id="btnSyncReport" class="btn-success" style="padding:7px 12px;font-size:0.8rem;"><i class="fas fa-sync"></i></button>
                     </div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center;position:relative;z-index:2;">
                         <select id="filterReportType" class="glass-input" style="flex:1;min-width:90px;">
@@ -143,7 +140,6 @@
                         <button id="btnPrintReport" class="btn-secondary" style="padding:8px 12px;font-size:0.8rem;flex-shrink:0;position:relative;z-index:2;"><i class="fas fa-print"></i></button>
                     </div>
                     <div id="reportSummary" style="display:none;margin-bottom:12px;position:relative;z-index:1;">
-                        <div id="reportStatCards" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"></div>
                         <div style="border:1px solid var(--glass-border);border-radius:10px;overflow:hidden;">
                             <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--glass-border);background:rgba(255,255,255,0.03);">
                                 <span style="font-size:0.78rem;font-weight:600;opacity:0.8;"><i class="fas fa-users" style="margin-right:5px;color:#60a5fa;"></i>Rekap per Anggota</span>
