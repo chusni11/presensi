@@ -138,7 +138,7 @@ function setupEventListeners() {
     // Form Manual Absen
     document.getElementById('formManualAbsen').addEventListener('submit', (e) => {
         e.preventDefault();
-        const memId = document.getElementById('selectAnggotaAbsen').value;
+        const memId = String(document.getElementById('selectAnggotaAbsen').value).trim();
         const status = document.getElementById('selectStatus').value;
         if(memId) submitAttendance(memId, status);
     });
@@ -941,7 +941,8 @@ function initScanner() {
 
 function processScan(barcodeStr) {
     document.getElementById('manualBarcode').value = '';
-    submitAttendance(barcodeStr, 'Hadir');
+    // Paksa string dan trim spasi — jaga leading zero tidak hilang
+    submitAttendance(String(barcodeStr).trim(), 'Hadir');
 }
 
 function showResultModal(member, msg) {
