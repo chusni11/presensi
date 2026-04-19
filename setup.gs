@@ -113,7 +113,12 @@ function getMembers() {
   for(let i = 1; i < data.length; i++) {
     let member = {};
     for(let j = 0; j < headers.length; j++) {
-      member[headers[j]] = data[i][j];
+      let val = data[i][j];
+      // Konversi Date object ke string agar tidak rusak saat JSON serialize
+      if (val instanceof Date) {
+        val = Utilities.formatDate(val, "Asia/Jakarta", "yyyy-MM-dd");
+      }
+      member[headers[j]] = val;
     }
     member._rowIndex = i + 1;
     members.push(member);
@@ -131,7 +136,37 @@ function getAttendance() {
   for(let i = 1; i < data.length; i++) {
     let rec = {};
     for(let j = 0; j < headers.length; j++) {
-      rec[headers[j]] = data[i][j];
+      let val = data[i][j];
+      let key = headers[j];
+
+      // Normalisasi kolom TANGGAL → string "yyyy-MM-dd"
+      if (key === "TANGGAL") {
+        if (val instanceof Date) {
+          val = Utilities.formatDate(val, "Asia/Jakarta", "yyyy-MM-dd");
+        } else {
+          val = String(val).substring(0, 10);
+        }
+      }
+
+      // Normalisasi kolom WAKTU → string "HH:mm"
+      if (key === "WAKTU") {
+        if (val instanceof Date) {
+          val = Utilities.formatDate(val, "Asia/Jakarta", "HH:mm");
+        } else {
+          val = String(val).substring(0, 5);
+        }
+      }
+
+      // Normalisasi kolom TIMESTAMP → string ISO
+      if (key === "TIMESTAMP") {
+        if (val instanceof Date) {
+          val = Utilities.formatDate(val, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
+        } else {
+          val = String(val);
+        }
+      }
+
+      rec[key] = val;
     }
     attendance.push(rec);
   }
