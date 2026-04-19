@@ -420,6 +420,10 @@ async function fetchMembers() {
 async function fetchAttendance() {
     try {
         attendance = await callAPI('getAttendance');
+        // Debug: log sample data untuk verifikasi format tanggal & waktu
+        if (attendance.length > 0) {
+            console.log('[Debug] Sample absensi:', JSON.stringify(attendance[attendance.length - 1]));
+        }
     } catch(e) {}
 }
 
