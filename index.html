@@ -195,16 +195,20 @@
                         <button id="btnSyncReport" class="btn-success"><i class="fas fa-sync"></i> Sinkronisasi</button>
                     </div>
                     
-                    <div class="filters flex-row mb-4 gap-2">
-                        <select id="filterReportType" class="glass-input flex-1">
-                            <option value="daily">Harian</option>
-                            <option value="weekly">Mingguan</option>
-                            <option value="monthly">Bulanan</option>
-                            <option value="all">Semua Data</option>
-                        </select>
-                        <input type="date" id="filterDateFrom" class="glass-input" title="Dari Tanggal">
-                        <input type="date" id="filterDateTo" class="glass-input" title="Sampai Tanggal">
-                        <button id="btnPrintReport" class="btn-secondary"><i class="fas fa-print"></i> Cetak</button>
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+                        <div class="filters flex-row gap-2" style="flex:1; min-width:0;">
+                            <select id="filterReportType" class="glass-input flex-1">
+                                <option value="daily">Harian</option>
+                                <option value="weekly">Mingguan</option>
+                                <option value="monthly">Bulanan</option>
+                                <option value="all">Semua Data</option>
+                            </select>
+                            <input type="date" id="filterDateFrom" class="glass-input" title="Dari Tanggal">
+                            <input type="date" id="filterDateTo" class="glass-input" title="Sampai Tanggal">
+                        </div>
+                        <button id="btnPrintReport" class="btn-secondary" style="flex-shrink:0; z-index:10; position:relative;">
+                            <i class="fas fa-print"></i> Cetak
+                        </button>
                     </div>
 
                     <!-- Ringkasan Statistik Periode -->
