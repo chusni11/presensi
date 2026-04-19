@@ -37,6 +37,7 @@ async function initApp() {
             fetchAttendance()
         ]);
         updateStats();
+        renderRecentAttendance();
         populateManualSelect();
         updateVisibility();
         initScanner();
@@ -284,6 +285,84 @@ function updateStats() {
 }
 
 // =======================
+// RECENT ATTENDANCE
+// =======================
+
+function renderRecentAttendance() {
+    const container = document.getElementById('recentAttendanceList');
+    const countBadge = document.getElementById('recentAttendanceCount');
+    if (!container) return;
+
+    const today = new Date();
+    const dateStr = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+
+    // Filter absensi hari ini, urutkan terbaru di atas
+    const todayAttendance = attendance
+        .filter(rec => String(rec["TANGGAL"]).substring(0, 10) === dateStr)
+        .slice()
+        .reverse()
+        .slice(0, 10);
+
+    countBadge.textContent = todayAttendance.length + ' orang';
+
+    if (todayAttendance.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:20px; opacity:0.4; font-size:0.85rem;">
+                <i class="fas fa-inbox" style="font-size:1.5rem; display:block; margin-bottom:6px;"></i>
+                Belum ada presensi hari ini
+            </div>`;
+        return;
+    }
+
+    // Build member foto lookup
+    const memberMap = {};
+    members.forEach(m => { memberMap[m["ID (BARCODE)"]] = m; });
+
+    const statusColor = { 'Hadir': '#4ade80', 'Ijin': '#60a5fa', 'Sakit': '#f59e0b', 'Alpa': '#f87171' };
+    const statusIcon  = { 'Hadir': 'fa-check-circle', 'Ijin': 'fa-door-open', 'Sakit': 'fa-heartbeat', 'Alpa': 'fa-times-circle' };
+
+    container.innerHTML = '';
+    todayAttendance.forEach((rec, idx) => {
+        const id     = rec["ID (BARCODE)"];
+        const nama   = rec["NAMA LENGKAP"] || '-';
+        const gol    = rec["GOL. KEANGGOTAAN"] || '-';
+        const status = rec["STATUS"] || 'Hadir';
+        const waktu  = String(rec["WAKTU"] || '').substring(0, 5) || '--:--';
+        const foto   = (memberMap[id] && memberMap[id]["URL FOTO"]) || 'https://via.placeholder.com/40';
+        const color  = statusColor[status] || '#94a3b8';
+        const icon   = statusIcon[status]  || 'fa-circle';
+
+        const item = document.createElement('div');
+        item.style.cssText = `
+            display:flex; align-items:center; gap:10px;
+            padding:9px 4px;
+            border-bottom: ${idx < todayAttendance.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none'};
+            animation: fadeInUp 0.3s ease both;
+            animation-delay: ${idx * 40}ms;
+        `;
+        item.innerHTML = `
+            <div style="position:relative; flex-shrink:0;">
+                <img src="${foto}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid ${color}40;">
+                <span style="position:absolute;bottom:-2px;right:-2px;background:${color};border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg-color,#0f172a);">
+                    <i class="fas ${icon}" style="font-size:7px;color:#fff;"></i>
+                </span>
+            </div>
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:600; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${nama}</div>
+                <div style="font-size:0.7rem; opacity:0.55;">${id} &bull; ${gol}</div>
+            </div>
+            <div style="text-align:right; flex-shrink:0;">
+                <div style="font-size:0.82rem; font-weight:700; color:${color};">${waktu}</div>
+                <div style="font-size:0.68rem; color:${color}; opacity:0.8;">${status}</div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// =======================
 // API CALLS (Dummy fetch if Script URL is not set, else real fetch)
 // =======================
 
@@ -349,11 +428,13 @@ async function submitAttendance(id, status = 'Hadir') {
     try {
         const result = await callAPI('scanBarcode', { id: id, status: status });
         Swal.close();
-        if(result.status === 'success' || result.status === 'info') {
-            await fetchAttendance(); // refresh logic
+        if(result.status === 'success') {
+            await fetchAttendance();
             updateStats();
-            showResultModal(result.member, result.status === 'info' ? 'Sudah Absen' : 'Berhasil Absen');
-            if(result.status === 'info') Swal.fire('Info', result.message, 'info');
+            renderRecentAttendance();
+            showResultModal(result.member, 'Berhasil Absen');
+        } else if(result.status === 'already') {
+            showResultModal(result.member, 'Sudah Absen Hari Ini');
         } else {
             Swal.fire('Gagal', result.message, 'error');
         }
@@ -554,12 +635,16 @@ function renderReportTable() {
 
     filteredData.forEach(rec => {
         let timeStr = rec["WAKTU"];
-        // Data dari GS sudah HH:mm, fallback jika masih ISO string
+        // Data dari GS sudah format HH:mm (WIB), fallback jika masih format lama
         if (timeStr && String(timeStr).length > 5) {
             try {
                 const t = new Date(timeStr);
                 if (!isNaN(t.getTime())) {
-                    timeStr = String(t.getUTCHours()).padStart(2, '0') + ':' + String(t.getUTCMinutes()).padStart(2, '0');
+                    // Konversi ke WIB (UTC+7)
+                    const wibOffset = 7 * 60;
+                    const localOffset = t.getTimezoneOffset();
+                    const wibTime = new Date(t.getTime() + (wibOffset + localOffset) * 60000);
+                    timeStr = String(wibTime.getHours()).padStart(2, '0') + ':' + String(wibTime.getMinutes()).padStart(2, '0');
                 } else {
                     timeStr = String(timeStr).substring(11, 16);
                 }
@@ -698,9 +783,12 @@ function showResultModal(member, msg) {
     document.getElementById('resGolongan').innerText = member["GOL. KEANGGOTAAN"];
     
     let isSuccess = msg.includes('Berhasil');
+    let isAlready = msg.includes('Sudah Absen');
+    const iconClass = isSuccess ? 'fa-check-circle' : 'fa-clock';
+    const iconColor = isSuccess ? 'var(--success-color)' : '#f59e0b';
     document.getElementById('resStatus').innerHTML = `
-        <i class="fas ${isSuccess ? 'fa-check-circle' : 'fa-info-circle'}" style="font-size: 2rem; display:block; margin-bottom: 10px; color:${isSuccess?'var(--success-color)':'#3b82f6'};"></i>
-        <span style="color:${isSuccess?'var(--success-color)':'#3b82f6'};">${msg}</span>
+        <i class="fas ${iconClass}" style="font-size: 2rem; display:block; margin-bottom: 10px; color:${iconColor};"></i>
+        <span style="color:${iconColor};">${msg}</span>
     `;
     
     document.getElementById('resultModal').style.display = 'flex';
