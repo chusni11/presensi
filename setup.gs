@@ -31,8 +31,8 @@ function setupDatabase() {
     
     // 1 Sampel Absen
     let today = new Date();
-    let dateStr = Utilities.formatDate(today, Session.getScriptTimeZone(), "yyyy-MM-dd");
-    let timeStr = Utilities.formatDate(today, Session.getScriptTimeZone(), "HH:mm:ss");
+    let dateStr = Utilities.formatDate(today, "Asia/Jakarta", "yyyy-MM-dd");
+    let timeStr = Utilities.formatDate(today, "Asia/Jakarta", "HH:mm");
     sheetAbsensi.appendRow([today, dateStr, timeStr, "PRM-001", "Budi Santoso", "Penggalang", "Hadir"]);
   }
 
@@ -155,17 +155,19 @@ function processAttendance(data) {
   
   // Check if already attended today
   let today = new Date();
-  let dateStr = Utilities.formatDate(today, Session.getScriptTimeZone(), "yyyy-MM-dd");
-  let timeStr = Utilities.formatDate(today, Session.getScriptTimeZone(), "HH:mm:ss");
+  let dateStr = Utilities.formatDate(today, "Asia/Jakarta", "yyyy-MM-dd");
+  let timeStr = Utilities.formatDate(today, "Asia/Jakarta", "HH:mm");
   
   // Let's assume attendance 1x a day check for 'Hadir', 'Ijin', 'Sakit', 'Alpa'
   for(let i = 1; i < absensiData.length; i++) {
     let rowDate = absensiData[i][1];
     if (typeof rowDate === "object") {
-        rowDate = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "yyyy-MM-dd");
+        rowDate = Utilities.formatDate(rowDate, "Asia/Jakarta", "yyyy-MM-dd");
+    } else {
+        rowDate = String(rowDate).substring(0, 10);
     }
-    if (absensiData[i][3] === id && rowDate === dateStr) {
-      return { status: "info", message: "Sudah melakukan absensi hari ini.", member: member };
+    if (String(absensiData[i][3]) === String(id) && rowDate === dateStr) {
+      return { status: "already", message: "Sudah melakukan absensi hari ini.", member: member };
     }
   }
   
