@@ -274,7 +274,9 @@ function updateStats() {
             flex: 1; min-width: 85px; background: rgba(15,23,42,0.5);
             border: 1px solid ${g.color}50; border-radius: 10px;
             padding: 8px 6px; text-align: center;
+            cursor: pointer; transition: border-color 0.2s, transform 0.15s;
         `;
+        card.title = `Lihat detail ${g.name}`;
         card.innerHTML = `
             <i class="fas ${g.icon}" style="color:${g.color}; font-size:1.1rem; margin-bottom:4px; display:block;"></i>
             <div style="font-size:1.1rem; font-weight:700; color:${g.color}; line-height:1.2;">
@@ -286,9 +288,125 @@ function updateStats() {
             </div>
             <div style="font-size:0.6rem; opacity:0.5; margin-top:3px;">${pct}%</div>
         `;
+        card.addEventListener('mouseenter', () => {
+            card.style.borderColor = g.color;
+            card.style.transform = 'translateY(-2px)';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.borderColor = `${g.color}50`;
+            card.style.transform = 'translateY(0)';
+        });
+        card.addEventListener('click', () => showGolonganModal(g, dateStr, hadirPerGol, totalPerGol, memberGolMap));
         container.appendChild(card);
     });
 }
+
+// =======================
+// GOLONGAN DETAIL MODAL
+// =======================
+
+function showGolonganModal(g, dateStr, hadirPerGol, totalPerGol, memberGolMap) {
+    // Kumpulkan anggota golongan ini
+    const anggotaGol = members.filter(m => m["GOL. KEANGGOTAAN"] === g.name);
+
+    // Set ID yang sudah absen hari ini (semua status)
+    const absenHariIni = {};
+    attendance.forEach(rec => {
+        if (String(rec["TANGGAL"]).substring(0, 10) === dateStr) {
+            absenHariIni[String(rec["ID (BARCODE)"])] = rec["STATUS"] || 'Hadir';
+        }
+    });
+
+    const hadir  = anggotaGol.filter(m => absenHariIni[String(m["ID (BARCODE)"])]);
+    const belum  = anggotaGol.filter(m => !absenHariIni[String(m["ID (BARCODE)"])]);
+
+    const statusColor = { 'Hadir': '#4ade80', 'Ijin': '#60a5fa', 'Sakit': '#f59e0b', 'Alpa': '#f87171' };
+    const statusIcon  = { 'Hadir': 'fa-check-circle', 'Ijin': 'fa-door-open', 'Sakit': 'fa-heartbeat', 'Alpa': 'fa-times-circle' };
+
+    function buildRow(m, status) {
+        const foto  = m["URL FOTO"] || 'https://via.placeholder.com/36';
+        const nama  = m["NAMA LENGKAP"] || '-';
+        const id    = m["ID (BARCODE)"] || '-';
+        const color = status ? (statusColor[status] || '#94a3b8') : 'rgba(255,255,255,0.2)';
+        const icon  = status ? (statusIcon[status]  || 'fa-circle') : 'fa-minus-circle';
+        const label = status || 'Belum Absen';
+        return `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <div style="position:relative;flex-shrink:0;">
+                    <img src="${foto}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid ${color}40;">
+                    <span style="position:absolute;bottom:-2px;right:-2px;background:${color};border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;border:2px solid #0f172a;">
+                        <i class="fas ${icon}" style="font-size:7px;color:#fff;"></i>
+                    </span>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nama}</div>
+                    <div style="font-size:0.7rem;opacity:0.5;">${id}</div>
+                </div>
+                <span style="font-size:0.72rem;color:${color};font-weight:600;flex-shrink:0;">${label}</span>
+            </div>`;
+    }
+
+    const hadirHTML = hadir.length
+        ? hadir.map(m => buildRow(m, absenHariIni[String(m["ID (BARCODE)"])])).join('')
+        : `<div style="padding:12px;text-align:center;opacity:0.4;font-size:0.82rem;">Belum ada yang absen</div>`;
+
+    const belumHTML = belum.length
+        ? belum.map(m => buildRow(m, null)).join('')
+        : `<div style="padding:12px;text-align:center;opacity:0.4;font-size:0.82rem;">Semua sudah absen</div>`;
+
+    const pct = anggotaGol.length > 0 ? Math.round((hadir.length / anggotaGol.length) * 100) : 0;
+
+    document.getElementById('golModalTitle').innerHTML =
+        `<i class="fas ${g.icon}" style="color:${g.color};margin-right:8px;"></i>${g.name}`;
+    document.getElementById('golModalBody').innerHTML = `
+        <!-- Progress summary -->
+        <div style="background:rgba(15,23,42,0.6);border:1px solid ${g.color}40;border-radius:10px;padding:12px 16px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:0.8rem;opacity:0.7;">Kehadiran Hari Ini</span>
+                <span style="font-size:1rem;font-weight:700;color:${g.color};">${hadir.length} <span style="font-size:0.75rem;opacity:0.6;font-weight:400;">/ ${anggotaGol.length}</span></span>
+            </div>
+            <div style="background:rgba(255,255,255,0.1);border-radius:6px;height:6px;overflow:hidden;">
+                <div style="width:${pct}%;height:100%;background:${g.color};border-radius:6px;transition:width 0.6s ease;"></div>
+            </div>
+            <div style="font-size:0.7rem;opacity:0.5;margin-top:4px;text-align:right;">${pct}%</div>
+        </div>
+
+        <!-- Tab toggle -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <button id="tabHadir" onclick="switchGolTab('hadir')" style="flex:1;padding:7px;border-radius:8px;border:1px solid ${g.color}80;background:${g.color}20;color:${g.color};font-size:0.8rem;font-weight:600;cursor:pointer;">
+                <i class="fas fa-check-circle" style="margin-right:4px;"></i>Sudah Absen (${hadir.length})
+            </button>
+            <button id="tabBelum" onclick="switchGolTab('belum')" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.5);font-size:0.8rem;font-weight:600;cursor:pointer;">
+                <i class="fas fa-clock" style="margin-right:4px;"></i>Belum Absen (${belum.length})
+            </button>
+        </div>
+
+        <!-- Lists -->
+        <div id="golListHadir" style="max-height:320px;overflow-y:auto;">${hadirHTML}</div>
+        <div id="golListBelum" style="max-height:320px;overflow-y:auto;display:none;">${belumHTML}</div>
+    `;
+
+    document.getElementById('golonganModal').style.display = 'flex';
+}
+
+window.switchGolTab = function(tab) {
+    const isHadir = tab === 'hadir';
+    document.getElementById('golListHadir').style.display = isHadir ? '' : 'none';
+    document.getElementById('golListBelum').style.display = isHadir ? 'none' : '';
+
+    const btnHadir = document.getElementById('tabHadir');
+    const btnBelum = document.getElementById('tabBelum');
+    // swap active style — ambil warna dari border yang sudah di-set
+    if (isHadir) {
+        btnHadir.style.opacity = '1';
+        btnBelum.style.opacity = '0.5';
+        btnBelum.style.background = 'transparent';
+    } else {
+        btnBelum.style.opacity = '1';
+        btnBelum.style.background = 'rgba(255,255,255,0.08)';
+        btnHadir.style.opacity = '0.5';
+    }
+};
 
 // =======================
 // RECENT ATTENDANCE
