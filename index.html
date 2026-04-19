@@ -195,7 +195,7 @@
                         <button id="btnSyncReport" class="btn-success"><i class="fas fa-sync"></i> Sinkronisasi</button>
                     </div>
                     
-                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px; position:relative; z-index:2;">
                         <div class="filters flex-row gap-2" style="flex:1; min-width:0;">
                             <select id="filterReportType" class="glass-input flex-1">
                                 <option value="daily">Harian</option>
@@ -206,13 +206,13 @@
                             <input type="date" id="filterDateFrom" class="glass-input" title="Dari Tanggal">
                             <input type="date" id="filterDateTo" class="glass-input" title="Sampai Tanggal">
                         </div>
-                        <button id="btnPrintReport" class="btn-secondary" style="flex-shrink:0; z-index:10; position:relative;">
+                        <button id="btnPrintReport" class="btn-secondary" style="flex-shrink:0; position:relative; z-index:2;">
                             <i class="fas fa-print"></i> Cetak
                         </button>
                     </div>
 
                     <!-- Ringkasan Statistik Periode -->
-                    <div id="reportSummary" style="display:none; margin-bottom:16px;">
+                    <div id="reportSummary" style="display:none; margin-bottom:16px; position:relative; z-index:1;">
                         <!-- Stat cards -->
                         <div id="reportStatCards" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;"></div>
                         <!-- Rekap per anggota -->
