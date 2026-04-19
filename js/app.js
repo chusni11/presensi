@@ -159,8 +159,7 @@ function setupEventListeners() {
     // Sync button
     document.getElementById('btnSyncReport').addEventListener('click', initApp);
 
-    // Statistik button
-    document.getElementById('btnStatistik').addEventListener('click', openStatistikModal);
+    // Statistik button (dari navbar)
     document.getElementById('statFilterType').addEventListener('change', toggleStatCustomRange);
     document.getElementById('btnApplyStatFilter').addEventListener('click', renderStatistikModal);
     document.getElementById('btnPrintStatistik').addEventListener('click', printStatistik);
@@ -907,34 +906,9 @@ function renderReportTable(skipSummary = false) {
     if (showSummary && filteredData.length > 0) {
         summaryPanel.style.display = '';
 
-        // Hitung total per status
-        const statusCount = { Hadir: 0, Ijin: 0, Sakit: 0, Alpa: 0 };
-        filteredData.forEach(rec => {
-            const s = rec["STATUS"] || 'Hadir';
-            if (statusCount.hasOwnProperty(s)) statusCount[s]++;
-        });
-        const totalRec = filteredData.length;
-
         // Hitung jumlah hari unik dalam periode
         const uniqueDates = [...new Set(filteredData.map(r => String(r["TANGGAL"]).substring(0, 10)))];
         const totalHari = uniqueDates.length;
-
-        // Stat cards
-        const statDefs = [
-            { label: 'Total Presensi', value: totalRec,          icon: 'fa-list-check',    color: '#60a5fa' },
-            { label: 'Hari Kegiatan',  value: totalHari,         icon: 'fa-calendar-days', color: '#a78bfa' },
-            { label: 'Hadir',          value: statusCount.Hadir, icon: 'fa-check-circle',  color: '#4ade80' },
-            { label: 'Ijin',           value: statusCount.Ijin,  icon: 'fa-door-open',     color: '#60a5fa' },
-            { label: 'Sakit',          value: statusCount.Sakit, icon: 'fa-heartbeat',     color: '#f59e0b' },
-            { label: 'Alpa',           value: statusCount.Alpa,  icon: 'fa-times-circle',  color: '#f87171' },
-        ];
-        document.getElementById('reportStatCards').innerHTML = statDefs.map(s => `
-            <div style="flex:1;min-width:80px;background:rgba(15,23,42,0.5);border:1px solid ${s.color}40;
-                        border-radius:10px;padding:10px 8px;text-align:center;">
-                <i class="fas ${s.icon}" style="color:${s.color};font-size:1rem;display:block;margin-bottom:4px;"></i>
-                <div style="font-size:1.15rem;font-weight:700;color:${s.color};">${s.value}</div>
-                <div style="font-size:0.65rem;opacity:0.6;margin-top:2px;">${s.label}</div>
-            </div>`).join('');
 
         // Rekap per anggota: hitung Hadir/Ijin/Sakit/Alpa masing-masing
         const memberMap = {};
