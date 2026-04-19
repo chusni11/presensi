@@ -85,6 +85,12 @@ function setupEventListeners() {
             if(targetId === 'manual-view') {
                 document.getElementById('searchAnggotaAbsen').value = '';
                 clearManualMember();
+                // Refresh data absensi agar filter "sudah absen" selalu akurat
+                fetchAttendance().then(() => {
+                    renderManualMemberList('');
+                    updateStats();
+                    renderRecentAttendance();
+                });
             }
             if(targetId === 'admin-view') {
                 currentPage = 1;
@@ -439,6 +445,9 @@ async function submitAttendance(id, status = 'Hadir') {
             renderManualMemberList(document.getElementById('searchAnggotaAbsen')?.value || '');
             showResultModal(result.member, 'Berhasil Absen');
         } else if(result.status === 'already') {
+            // Refresh juga agar anggota yang ternyata sudah absen hilang dari daftar
+            await fetchAttendance();
+            renderManualMemberList(document.getElementById('searchAnggotaAbsen')?.value || '');
             showResultModal(result.member, 'Sudah Absen Hari Ini');
         } else {
             Swal.fire('Gagal', result.message, 'error');
