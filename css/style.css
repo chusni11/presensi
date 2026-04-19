@@ -355,9 +355,13 @@ body {
 /* Print Styles */
 @media print {
     body * { visibility: hidden; }
-    #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: #fff; color: #000; padding: 20px; }
+    #printArea, #printStatArea { display: block !important; }
+    #printArea { position: absolute; left: 0; top: 0; width: 100%; background: #fff; color: #000; padding: 20px; }
     #printArea, #printArea * { visibility: visible; }
+    #printStatArea { position: absolute; left: 0; top: 0; width: 100%; background: #fff; color: #000; padding: 20px; }
+    #printStatArea, #printStatArea * { visibility: visible; }
     .excel-table th, .excel-table td { border: 1px solid #000; padding: 8px; font-size: 12px; }
+    .stat-print-table th, .stat-print-table td { border: 1px solid #000; padding: 6px 8px; font-size: 11px; }
 }
 
 /* Recent Attendance Animation */
