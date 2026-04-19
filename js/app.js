@@ -804,7 +804,7 @@ function clearManualMember() {
     renderManualMemberList(document.getElementById('searchAnggotaAbsen').value);
 }
 
-function renderReportTable() {
+function renderReportTable(skipSummary = false) {
     const tbody = document.querySelector('#tableReport tbody');
     tbody.innerHTML = '';
     
@@ -853,7 +853,7 @@ function renderReportTable() {
     });
 
     // ── Hitung ringkasan statistik ──────────────────────────────────────
-    const showSummary = (filter === 'weekly' || filter === 'monthly' ||
+    const showSummary = !skipSummary && (filter === 'weekly' || filter === 'monthly' ||
                          filter === 'all'    || dateFrom || dateTo);
     const summaryPanel = document.getElementById('reportSummary');
 
@@ -1118,7 +1118,7 @@ function showResultModal(member, msg) {
 }
 
 function generatePrintView() {
-    renderReportTable(); // ensure report view is generated based on filter
+    renderReportTable(true); // skip summary saat print agar tidak ada layout shift
     
     // Copy data from report table to print table
     const srcTbody = document.querySelector('#tableReport tbody');
