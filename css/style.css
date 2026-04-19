@@ -336,7 +336,8 @@ body {
 .glass-table tr td:first-child, .glass-table tr th:first-child { border-radius: 8px 0 0 8px; }
 .glass-table tr td:last-child, .glass-table tr th:last-child { border-radius: 0 8px 8px 0; }
 .glass-table tbody tr { transition: transform 0.2s; }
-.glass-table tbody tr:hover { transform: scale(1.01); background: rgba(255,255,255,0.05); }
+.glass-table tbody tr:hover { transform: scale(1.005); background: rgba(255,255,255,0.05); }
+.table-responsive { position: relative; z-index: 0; }
 
 /* Modals */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); z-index: 1000; display: flex; justify-content: center; align-items: center; padding: 20px; }
