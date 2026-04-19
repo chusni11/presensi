@@ -436,6 +436,7 @@ async function submitAttendance(id, status = 'Hadir') {
             await fetchAttendance();
             updateStats();
             renderRecentAttendance();
+            renderManualMemberList(document.getElementById('searchAnggotaAbsen')?.value || '');
             showResultModal(result.member, 'Berhasil Absen');
         } else if(result.status === 'already') {
             showResultModal(result.member, 'Sudah Absen Hari Ini');
@@ -518,12 +519,40 @@ function populateManualSelect() {
 function renderManualMemberList(query) {
     const container = document.getElementById('listAnggotaAbsen');
     if (!container) return;
+
+    // Buat set ID anggota yang sudah absen hari ini
+    const today = new Date();
+    const dateStr = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+    const absenHariIni = new Set(
+        attendance
+            .filter(rec => String(rec["TANGGAL"]).substring(0, 10) === dateStr)
+            .map(rec => String(rec["ID (BARCODE)"]))
+    );
+
+    // Filter: belum absen hari ini, lalu filter query pencarian
     const q = query.toLowerCase().trim();
+    const belumAbsen = members.filter(m => !absenHariIni.has(String(m["ID (BARCODE)"])));
+
+    // Update badge counter
+    const countBadge = document.getElementById('belumAbsenCount');
+    if (countBadge) countBadge.textContent = belumAbsen.length + ' belum absen';
+
     const filtered = q
-        ? members.filter(m =>
+        ? belumAbsen.filter(m =>
             (m["NAMA LENGKAP"] || '').toLowerCase().includes(q) ||
             (m["ID (BARCODE)"] || '').toLowerCase().includes(q))
-        : members;
+        : belumAbsen;
+
+    if (belumAbsen.length === 0) {
+        container.innerHTML = `
+            <div style="padding:24px 16px; text-align:center; opacity:0.5; font-size:0.85rem;">
+                <i class="fas fa-check-double" style="font-size:1.8rem; display:block; margin-bottom:8px; color:#4ade80; opacity:0.7;"></i>
+                Semua anggota sudah melakukan absensi hari ini
+            </div>`;
+        return;
+    }
 
     if (filtered.length === 0) {
         container.innerHTML = `<div style="padding:16px; text-align:center; opacity:0.5; font-size:0.85rem;">Anggota tidak ditemukan</div>`;
@@ -531,6 +560,13 @@ function renderManualMemberList(query) {
     }
 
     const selectedId = document.getElementById('selectAnggotaAbsen').value;
+
+    // Jika anggota yang dipilih ternyata sudah absen, reset pilihan
+    if (selectedId && absenHariIni.has(selectedId)) {
+        clearManualMember();
+        return;
+    }
+
     container.innerHTML = '';
     filtered.forEach(m => {
         const id = m["ID (BARCODE)"];
