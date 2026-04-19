@@ -118,6 +118,10 @@ function getMembers() {
       if (val instanceof Date) {
         val = Utilities.formatDate(val, "Asia/Jakarta", "yyyy-MM-dd");
       }
+      // Paksa kolom ID (BARCODE) selalu string agar leading zero tidak hilang
+      if (headers[j] === "ID (BARCODE)") {
+        val = String(val);
+      }
       member[headers[j]] = val;
     }
     member._rowIndex = i + 1;
@@ -166,6 +170,11 @@ function getAttendance() {
         }
       }
 
+      // Paksa kolom ID (BARCODE) selalu string agar leading zero tidak hilang
+      if (key === "ID (BARCODE)") {
+        val = String(val);
+      }
+
       rec[key] = val;
     }
     attendance.push(rec);
@@ -174,15 +183,28 @@ function getAttendance() {
 }
 
 function processAttendance(data) {
-  let id = data.id;
+  // Normalisasi ID: paksa string agar leading zero tidak hilang
+  let id = String(data.id).trim();
   let status = data.status || "Hadir";
   
   const members = getMembers();
-  const member = members.find(m => m["ID (BARCODE)"] === id);
+  // Cari anggota: cocokkan string exact dulu, fallback ke perbandingan numerik
+  // (menangani kasus ID di spreadsheet terlanjur tersimpan tanpa leading zero)
+  let member = members.find(m => String(m["ID (BARCODE)"]) === id);
+  if (!member) {
+    // Fallback: bandingkan sebagai number (misal "0123" vs 123)
+    const idNum = parseFloat(id);
+    if (!isNaN(idNum)) {
+      member = members.find(m => parseFloat(m["ID (BARCODE)"]) === idNum);
+    }
+  }
   
   if (!member) {
     return { status: "error", message: "Anggota dengan ID tersebut tidak ditemukan." };
   }
+
+  // Gunakan ID canonical dari data anggota (yang punya leading zero)
+  const canonicalId = String(member["ID (BARCODE)"]);
   
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetAbsensi = ss.getSheetByName(SHEET_ABSENSI);
@@ -201,12 +223,22 @@ function processAttendance(data) {
     } else {
         rowDate = String(rowDate).substring(0, 10);
     }
-    if (String(absensiData[i][3]) === String(id) && rowDate === dateStr) {
+    // Cocokkan ID: string exact ATAU numerik (toleransi data lama tanpa leading zero)
+    const rowId = String(absensiData[i][3]);
+    const idMatch = rowId === canonicalId ||
+                    (!isNaN(parseFloat(rowId)) && !isNaN(parseFloat(canonicalId)) &&
+                     parseFloat(rowId) === parseFloat(canonicalId));
+    if (idMatch && rowDate === dateStr) {
       return { status: "already", message: "Sudah melakukan absensi hari ini.", member: member };
     }
   }
   
-  sheetAbsensi.appendRow([today, dateStr, timeStr, member["ID (BARCODE)"], member["NAMA LENGKAP"], member["GOL. KEANGGOTAAN"], status]);
+  // Simpan ID sebagai plain text agar leading zero tidak hilang
+  const newRow = [today, dateStr, timeStr, canonicalId, member["NAMA LENGKAP"], member["GOL. KEANGGOTAAN"], status];
+  const newRowIndex = sheetAbsensi.getLastRow() + 1;
+  sheetAbsensi.appendRow(newRow);
+  // Paksa kolom ID (kolom ke-4, index 3) sebagai plain text setelah ditulis
+  sheetAbsensi.getRange(newRowIndex, 4).setNumberFormat('@').setValue(canonicalId);
   return { status: "success", message: "Absensi Berhasil (" + status + ")!", member: member };
 }
 
@@ -245,7 +277,7 @@ function deleteMember(id) {
   const data = sheet.getDataRange().getValues();
   
   for(let i = 1; i < data.length; i++) {
-    if (data[i][1] === id) {
+    if (String(data[i][1]) === String(id)) {
       sheet.deleteRow(i + 1);
       return { status: "success", message: "Anggota berhasil dihapus" };
     }
@@ -255,4 +287,55 @@ function deleteMember(id) {
 
 function doOptions(e) {
   return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT);
+}
+
+/**
+ * Jalankan fungsi ini SEKALI dari Apps Script Editor untuk:
+ * 1. Memformat kolom ID di sheet Absensi & Anggota sebagai plain text
+ * 2. Memperbaiki data lama yang leading zero-nya hilang dengan mencocokkan ke data Anggota
+ */
+function fixLeadingZeroIds() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // --- Fix sheet Anggota: kolom B (ID BARCODE) ---
+  const sheetAnggota = ss.getSheetByName(SHEET_ANGGOTA);
+  const lastRowA = sheetAnggota.getLastRow();
+  if (lastRowA > 1) {
+    sheetAnggota.getRange(2, 2, lastRowA - 1, 1).setNumberFormat('@');
+  }
+
+  // --- Fix sheet Absensi: kolom D (ID BARCODE) ---
+  const sheetAbsensi = ss.getSheetByName(SHEET_ABSENSI);
+  const absensiData = sheetAbsensi.getDataRange().getValues();
+  const lastRowB = sheetAbsensi.getLastRow();
+  if (lastRowB > 1) {
+    sheetAbsensi.getRange(2, 4, lastRowB - 1, 1).setNumberFormat('@');
+  }
+
+  // Build lookup: numeric value -> canonical ID string dari sheet Anggota
+  const anggotaData = sheetAnggota.getDataRange().getValues();
+  const numericToCanonical = {};
+  for (let i = 1; i < anggotaData.length; i++) {
+    const rawId = anggotaData[i][1]; // kolom B
+    const strId = String(rawId);
+    const numId = parseFloat(strId);
+    if (!isNaN(numId)) {
+      numericToCanonical[numId] = strId;
+    }
+  }
+
+  // Perbaiki baris absensi yang ID-nya kehilangan leading zero
+  let fixedCount = 0;
+  for (let i = 1; i < absensiData.length; i++) {
+    const rawId = absensiData[i][3]; // kolom D
+    const strId = String(rawId);
+    const numId = parseFloat(strId);
+    if (!isNaN(numId) && numericToCanonical[numId] && numericToCanonical[numId] !== strId) {
+      // ID ini kehilangan leading zero — perbaiki
+      sheetAbsensi.getRange(i + 1, 4).setNumberFormat('@').setValue(numericToCanonical[numId]);
+      fixedCount++;
+    }
+  }
+
+  SpreadsheetApp.getUi().alert('Selesai! ' + fixedCount + ' baris ID absensi diperbaiki.');
 }
