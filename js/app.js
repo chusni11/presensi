@@ -154,6 +154,12 @@ function setupEventListeners() {
     // Sync button
     document.getElementById('btnSyncReport').addEventListener('click', initApp);
 
+    // Statistik button
+    document.getElementById('btnStatistik').addEventListener('click', openStatistikModal);
+    document.getElementById('statFilterType').addEventListener('change', toggleStatCustomRange);
+    document.getElementById('btnApplyStatFilter').addEventListener('click', renderStatistikModal);
+    document.getElementById('btnPrintStatistik').addEventListener('click', printStatistik);
+
     // Print button
     document.getElementById('btnPrintReport').addEventListener('click', () => {
         generatePrintView();
@@ -1228,4 +1234,382 @@ function generatePrintView() {
     }
     document.getElementById('printCurrentDate').innerText = tglTanda || 'Tanggal';
     document.getElementById('printLeader').innerText = currentSettings.NAMA_PIMPINAN || 'Kak Pimpinan';
+}
+
+// =======================
+// STATISTIK KEHADIRAN
+// =======================
+
+const GOLONGAN_CFG = [
+    { name: 'Siaga',      icon: 'fa-child',             color: '#22c55e' },
+    { name: 'Penggalang', icon: 'fa-hiking',             color: '#ef4444' },
+    { name: 'Penegak',    icon: 'fa-user-shield',        color: '#eab308' },
+    { name: 'Pandega',    icon: 'fa-user-graduate',      color: '#f97316' },
+    { name: 'Pembina',    icon: 'fa-chalkboard-teacher', color: '#a855f7' },
+];
+const STATUS_COLOR = { Hadir:'#4ade80', Ijin:'#60a5fa', Sakit:'#f59e0b', Alpa:'#f87171' };
+
+/** Filter attendance sesuai setting modal statistik */
+function getStatFilteredData() {
+    const type     = document.getElementById('statFilterType').value;
+    const dateFrom = document.getElementById('statDateFrom').value;
+    const dateTo   = document.getElementById('statDateTo').value;
+    const today    = new Date();
+
+    return attendance.filter(rec => {
+        const d = String(rec["TANGGAL"]).substring(0, 10);
+        if (type === 'custom') {
+            if (dateFrom && d < dateFrom) return false;
+            if (dateTo   && d > dateTo)   return false;
+            return true;
+        }
+        const [rY, rM, rD] = d.split('-').map(Number);
+        const recDate = new Date(rY, rM - 1, rD);
+        if (type === 'weekly') {
+            const diff = (today - recDate) / 86400000;
+            return diff >= 0 && diff <= 7;
+        }
+        if (type === 'monthly') {
+            return rM - 1 === today.getMonth() && rY === today.getFullYear();
+        }
+        return true;
+    });
+}
+
+/** Label periode untuk header */
+function getStatPeriodLabel() {
+    const type     = document.getElementById('statFilterType').value;
+    const dateFrom = document.getElementById('statDateFrom').value;
+    const dateTo   = document.getElementById('statDateTo').value;
+    const today    = new Date();
+    const months   = ['Januari','Februari','Maret','April','Mei','Juni',
+                      'Juli','Agustus','September','Oktober','November','Desember'];
+    if (type === 'custom') return (dateFrom || '...') + ' s/d ' + (dateTo || '...');
+    if (type === 'weekly')  return '7 Hari Terakhir';
+    if (type === 'monthly') return months[today.getMonth()] + ' ' + today.getFullYear();
+    return 'Semua Data';
+}
+
+/** Hitung data statistik dari filteredData */
+function computeStatData(filteredData) {
+    const memberMap = {};
+    members.forEach(m => { memberMap[String(m["ID (BARCODE)"])] = m; });
+
+    const uniqueDates = [...new Set(filteredData.map(r => String(r["TANGGAL"]).substring(0, 10)))];
+    const totalHari   = uniqueDates.length;
+
+    // Per anggota
+    const perAnggota = {};
+    filteredData.forEach(rec => {
+        const id   = normalizeId(rec["ID (BARCODE)"]);
+        const m    = memberMap[id] || {};
+        const nama = rec["NAMA LENGKAP"] || m["NAMA LENGKAP"] || id;
+        const gol  = rec["GOL. KEANGGOTAAN"] || m["GOL. KEANGGOTAAN"] || '-';
+        const foto = m["URL FOTO"] || '';
+        const s    = rec["STATUS"] || 'Hadir';
+        if (!perAnggota[id]) perAnggota[id] = { id, nama, gol, foto, Hadir:0, Ijin:0, Sakit:0, Alpa:0 };
+        if (perAnggota[id].hasOwnProperty(s)) perAnggota[id][s]++;
+    });
+
+    // Per golongan
+    const perGol = {};
+    GOLONGAN_CFG.forEach(g => {
+        perGol[g.name] = { total: 0, Hadir:0, Ijin:0, Sakit:0, Alpa:0, anggota:[] };
+    });
+    members.forEach(m => {
+        const g = m["GOL. KEANGGOTAAN"];
+        if (perGol[g]) { perGol[g].total++; perGol[g].anggota.push(String(m["ID (BARCODE)"])); }
+    });
+    Object.values(perAnggota).forEach(a => {
+        if (perGol[a.gol]) {
+            perGol[a.gol].Hadir += a.Hadir;
+            perGol[a.gol].Ijin  += a.Ijin;
+            perGol[a.gol].Sakit += a.Sakit;
+            perGol[a.gol].Alpa  += a.Alpa;
+        }
+    });
+
+    return { perAnggota: Object.values(perAnggota), perGol, totalHari, memberMap };
+}
+
+/** Render tab Golongan */
+function renderStatGolongan(data) {
+    const { perGol, totalHari } = data;
+    let html = '';
+
+    // Ringkasan total semua golongan
+    const totalHadir = Object.values(perGol).reduce((s, g) => s + g.Hadir, 0);
+    const totalRec   = Object.values(perGol).reduce((s, g) => s + g.Hadir + g.Ijin + g.Sakit + g.Alpa, 0);
+    html += `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
+            ${[
+                { label:'Total Presensi', val:totalRec,   color:'#60a5fa', icon:'fa-list-check' },
+                { label:'Hari Kegiatan',  val:totalHari,  color:'#a78bfa', icon:'fa-calendar-days' },
+                { label:'Total Hadir',    val:totalHadir, color:'#4ade80', icon:'fa-check-circle' },
+            ].map(s => `
+                <div style="flex:1;min-width:80px;background:rgba(15,23,42,0.5);border:1px solid ${s.color}30;
+                            border-radius:10px;padding:10px 8px;text-align:center;">
+                    <i class="fas ${s.icon}" style="color:${s.color};font-size:0.95rem;display:block;margin-bottom:3px;"></i>
+                    <div style="font-size:1.1rem;font-weight:700;color:${s.color};">${s.val}</div>
+                    <div style="font-size:0.62rem;opacity:0.55;margin-top:2px;">${s.label}</div>
+                </div>`).join('')}
+        </div>`;
+
+    // Kartu per golongan
+    GOLONGAN_CFG.forEach(g => {
+        const d   = perGol[g.name];
+        if (!d) return;
+        const tot = d.total;
+        const hadirAnggota = d.anggota.filter(id => {
+            const a = data.perAnggota.find(x => x.id === id);
+            return a && a.Hadir > 0;
+        }).length;
+        const pct = tot > 0 ? Math.round((hadirAnggota / tot) * 100) : 0;
+        const totalAbsen = d.Hadir + d.Ijin + d.Sakit + d.Alpa;
+
+        html += `
+        <div style="background:rgba(15,23,42,0.5);border:1px solid ${g.color}30;border-radius:12px;
+                    padding:14px;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:${g.color}20;
+                            border:1px solid ${g.color}50;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas ${g.icon}" style="color:${g.color};font-size:1rem;"></i>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:700;font-size:0.9rem;">${g.name}</div>
+                    <div style="font-size:0.7rem;opacity:0.5;">${tot} anggota terdaftar</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:1.1rem;font-weight:700;color:${g.color};">${hadirAnggota}<span style="font-size:0.72rem;opacity:0.5;font-weight:400;">/${tot}</span></div>
+                    <div style="font-size:0.65rem;opacity:0.5;">anggota hadir</div>
+                </div>
+            </div>
+            <!-- Progress bar -->
+            <div style="background:rgba(255,255,255,0.08);border-radius:6px;height:6px;overflow:hidden;margin-bottom:8px;">
+                <div style="width:${pct}%;height:100%;background:${g.color};border-radius:6px;transition:width 0.6s;"></div>
+            </div>
+            <!-- Status breakdown -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${['Hadir','Ijin','Sakit','Alpa'].map(s => `
+                    <span style="font-size:0.68rem;background:${STATUS_COLOR[s]}15;color:${STATUS_COLOR[s]};
+                                 border:1px solid ${STATUS_COLOR[s]}40;border-radius:4px;padding:2px 8px;">
+                        ${s} ${d[s]}x
+                    </span>`).join('')}
+                <span style="font-size:0.68rem;opacity:0.4;margin-left:auto;">${pct}% kehadiran</span>
+            </div>
+        </div>`;
+    });
+
+    document.getElementById('statBodyGolongan').innerHTML = html;
+}
+
+/** Render tab Individu */
+function renderStatIndividu(data) {
+    const { perAnggota, totalHari } = data;
+    if (perAnggota.length === 0) {
+        document.getElementById('statBodyIndividu').innerHTML =
+            `<div style="text-align:center;padding:30px;opacity:0.4;font-size:0.85rem;">Tidak ada data pada periode ini</div>`;
+        return;
+    }
+
+    const sorted = [...perAnggota].sort((a, b) => b.Hadir - a.Hadir);
+
+    // Search box
+    let html = `
+        <div style="position:relative;margin:12px 0 8px;">
+            <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:0.4;font-size:0.8rem;"></i>
+            <input type="text" id="statSearchInd" placeholder="Cari nama atau ID..."
+                   class="glass-input w-100" style="padding-left:30px;font-size:0.82rem;"
+                   oninput="filterStatIndividu(this.value)">
+        </div>
+        <div id="statIndList">`;
+
+    sorted.forEach((a, idx) => {
+        const pct  = totalHari > 0 ? Math.round((a.Hadir / totalHari) * 100) : 0;
+        const foto = getAvatarSrc(a.foto, a.nama, 36);
+        const gCfg = GOLONGAN_CFG.find(g => g.name === a.gol) || { color: '#94a3b8' };
+        const badges = ['Hadir','Ijin','Sakit','Alpa']
+            .filter(s => a[s] > 0)
+            .map(s => `<span style="font-size:0.62rem;background:${STATUS_COLOR[s]}15;color:${STATUS_COLOR[s]};
+                                    border:1px solid ${STATUS_COLOR[s]}40;border-radius:3px;padding:1px 5px;">${s} ${a[s]}</span>`).join('');
+
+        html += `
+        <div class="stat-ind-row" data-nama="${a.nama.toLowerCase()}" data-id="${a.id.toLowerCase()}"
+             style="display:flex;align-items:center;gap:10px;padding:9px 4px;
+                    border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:0.7rem;opacity:0.3;width:18px;text-align:right;flex-shrink:0;">${idx+1}</span>
+            <img src="${foto}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;
+                                      border:2px solid ${gCfg.color}40;flex-shrink:0;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:0.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nama}</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;">${badges}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+                <div style="font-size:0.9rem;font-weight:700;color:#4ade80;">${a.Hadir}<span style="font-size:0.68rem;opacity:0.45;font-weight:400;">/${totalHari}</span></div>
+                <div style="font-size:0.62rem;opacity:0.4;">${pct}%</div>
+            </div>
+        </div>`;
+    });
+
+    html += `</div>`;
+    document.getElementById('statBodyIndividu').innerHTML = html;
+}
+
+window.filterStatIndividu = function(q) {
+    const query = q.toLowerCase().trim();
+    document.querySelectorAll('.stat-ind-row').forEach(row => {
+        const match = !query || row.dataset.nama.includes(query) || row.dataset.id.includes(query);
+        row.style.display = match ? '' : 'none';
+    });
+};
+
+window.switchStatTab = function(tab) {
+    const isGol = tab === 'golongan';
+    document.getElementById('statBodyGolongan').style.display = isGol ? '' : 'none';
+    document.getElementById('statBodyIndividu').style.display = isGol ? 'none' : '';
+    document.getElementById('statTabGol').style.background = isGol ? 'rgba(167,139,250,0.15)' : 'transparent';
+    document.getElementById('statTabGol').style.color      = isGol ? '#a78bfa' : 'rgba(255,255,255,0.4)';
+    document.getElementById('statTabInd').style.background = isGol ? 'transparent' : 'rgba(167,139,250,0.15)';
+    document.getElementById('statTabInd').style.color      = isGol ? 'rgba(255,255,255,0.4)' : '#a78bfa';
+};
+
+function renderStatistikModal() {
+    const filteredData = getStatFilteredData();
+    const label        = getStatPeriodLabel();
+    document.getElementById('statModalPeriodLabel').textContent = 'Periode: ' + label;
+
+    const data = computeStatData(filteredData);
+    renderStatGolongan(data);
+    renderStatIndividu(data);
+    // Store for print
+    window._lastStatData  = data;
+    window._lastStatLabel = label;
+}
+
+function openStatistikModal() {
+    // Sync filter periode dari laporan
+    const reportFilter = document.getElementById('filterReportType').value;
+    const statFilter   = document.getElementById('statFilterType');
+    if (reportFilter === 'weekly' || reportFilter === 'monthly') {
+        statFilter.value = reportFilter;
+    }
+    const dateFrom = document.getElementById('filterDateFrom').value;
+    const dateTo   = document.getElementById('filterDateTo').value;
+    if (dateFrom || dateTo) {
+        statFilter.value = 'custom';
+        document.getElementById('statDateFrom').value = dateFrom;
+        document.getElementById('statDateTo').value   = dateTo;
+    }
+    toggleStatCustomRange();
+    renderStatistikModal();
+    switchStatTab('golongan');
+    document.getElementById('statistikModal').style.display = 'flex';
+}
+
+function toggleStatCustomRange() {
+    const isCustom = document.getElementById('statFilterType').value === 'custom';
+    const el = document.getElementById('statCustomRange');
+    el.style.display = isCustom ? 'flex' : 'none';
+}
+
+function printStatistik() {
+    const data  = window._lastStatData;
+    const label = window._lastStatLabel;
+    if (!data) return;
+
+    const months = ['Januari','Februari','Maret','April','Mei','Juni',
+                    'Juli','Agustus','September','Oktober','November','Desember'];
+    const now = new Date();
+
+    // Build print content
+    let content = `<h3 style="margin:0 0 12px;font-size:14px;">Statistik Per Golongan</h3>`;
+    content += `<table class="stat-print-table" style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+        <thead style="background:#f0f0f0;">
+            <tr>
+                <th style="border:1px solid #000;padding:6px;text-align:left;">Golongan</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">Total Anggota</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">Hadir</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">Ijin</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">Sakit</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">Alpa</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">% Hadir</th>
+            </tr>
+        </thead><tbody>`;
+
+    GOLONGAN_CFG.forEach(g => {
+        const d = data.perGol[g.name];
+        if (!d) return;
+        const hadirAnggota = d.anggota.filter(id => {
+            const a = data.perAnggota.find(x => x.id === id);
+            return a && a.Hadir > 0;
+        }).length;
+        const pct = d.total > 0 ? Math.round((hadirAnggota / d.total) * 100) : 0;
+        content += `<tr>
+            <td style="border:1px solid #000;padding:6px;">${g.name}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${d.total}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${d.Hadir}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${d.Ijin}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${d.Sakit}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${d.Alpa}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${pct}%</td>
+        </tr>`;
+    });
+    content += `</tbody></table>`;
+
+    // Individu table
+    const sorted = [...data.perAnggota].sort((a, b) => b.Hadir - a.Hadir);
+    content += `<h3 style="margin:0 0 12px;font-size:14px;">Statistik Per Individu</h3>`;
+    content += `<table class="stat-print-table" style="width:100%;border-collapse:collapse;">
+        <thead style="background:#f0f0f0;">
+            <tr>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">No</th>
+                <th style="border:1px solid #000;padding:6px;text-align:left;">Nama</th>
+                <th style="border:1px solid #000;padding:6px;text-align:left;">Golongan</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">Hadir</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">Ijin</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">Sakit</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">Alpa</th>
+                <th style="border:1px solid #000;padding:6px;text-align:center;">% Hadir</th>
+            </tr>
+        </thead><tbody>`;
+
+    sorted.forEach((a, i) => {
+        const pct = data.totalHari > 0 ? Math.round((a.Hadir / data.totalHari) * 100) : 0;
+        content += `<tr>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${i+1}</td>
+            <td style="border:1px solid #000;padding:6px;">${a.nama}</td>
+            <td style="border:1px solid #000;padding:6px;">${a.gol}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${a.Hadir}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${a.Ijin}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${a.Sakit}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${a.Alpa}</td>
+            <td style="border:1px solid #000;padding:6px;text-align:center;">${pct}%</td>
+        </tr>`;
+    });
+    content += `</tbody></table>`;
+
+    // Populate print area
+    document.getElementById('printStatContent').innerHTML = content;
+    document.getElementById('printStatPeriode').innerText = 'Periode: ' + label;
+    document.getElementById('printStatCity').innerText    = currentSettings.KOTA_TANDA_TANGAN || 'Jakarta';
+    document.getElementById('printStatLeader').innerText  = currentSettings.NAMA_PIMPINAN || 'Kak Pimpinan';
+
+    let tglTanda = currentSettings.TANGGAL_TANDA_TANGAN || '';
+    if (tglTanda.toLowerCase().includes('otomatis') || !tglTanda) {
+        tglTanda = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+    }
+    document.getElementById('printStatDate').innerText = tglTanda;
+
+    const logo = document.getElementById('printStatLogo');
+    if (currentSettings.IMAGE_URL) { logo.src = currentSettings.IMAGE_URL; logo.style.display = 'block'; }
+    else { logo.style.display = 'none'; }
+
+    // Sembunyikan printArea biasa, tampilkan printStatArea
+    document.getElementById('printArea').style.display    = 'none';
+    document.getElementById('printStatArea').style.display = 'block';
+    window.print();
+    // Kembalikan state setelah print
+    setTimeout(() => {
+        document.getElementById('printStatArea').style.display = 'none';
+    }, 500);
 }
