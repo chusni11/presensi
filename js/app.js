@@ -775,63 +775,152 @@ function renderReportTable() {
     tbody.innerHTML = '';
     
     const filter = document.getElementById('filterReportType').value;
-    const dateFrom = document.getElementById('filterDateFrom').value; // yyyy-mm-dd
-    const dateTo = document.getElementById('filterDateTo').value;     // yyyy-mm-dd
+    const dateFrom = document.getElementById('filterDateFrom').value;
+    const dateTo = document.getElementById('filterDateTo').value;
     const today = new Date();
     const tDay = today.getDate();
     const tMonth = today.getMonth();
     const tYear = today.getFullYear();
-    
-    // Filter the attendance data
-    let filteredData = attendance.filter(rec => {
-        let recDateStr = String(rec["TANGGAL"]).substring(0, 10); // format yyyy-mm-dd
 
-        // Jika ada filter tanggal custom, prioritaskan
+    // Hitung rentang periode untuk label
+    function getPeriodLabel() {
+        if (dateFrom || dateTo) {
+            return (dateFrom || '...') + ' s/d ' + (dateTo || '...');
+        }
+        if (filter === 'daily')   return 'Hari ini, ' + today.toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'});
+        if (filter === 'weekly')  return '7 hari terakhir';
+        if (filter === 'monthly') return today.toLocaleDateString('id-ID', {month:'long', year:'numeric'});
+        return 'Semua Data';
+    }
+
+    // Filter data absensi sesuai periode
+    let filteredData = attendance.filter(rec => {
+        let recDateStr = String(rec["TANGGAL"]).substring(0, 10);
+
         if (dateFrom || dateTo) {
             if (dateFrom && recDateStr < dateFrom) return false;
-            if (dateTo && recDateStr > dateTo) return false;
+            if (dateTo   && recDateStr > dateTo)   return false;
             return true;
         }
-
         if (filter === 'all') return true;
 
-        let rDateParts = recDateStr.split('-');
-        if (rDateParts.length !== 3) return true;
-
-        let rYear = parseInt(rDateParts[0]);
-        let rMonth = parseInt(rDateParts[1]) - 1;
-        let rDay = parseInt(rDateParts[2]);
-        let dDate = new Date(rYear, rMonth, rDay);
+        let [rYear, rMonth, rDay] = recDateStr.split('-').map(Number);
+        let dDate = new Date(rYear, rMonth - 1, rDay);
 
         if (filter === 'daily') {
-            return (rDay === tDay && rMonth === tMonth && rYear === tYear);
+            return (rDay === tDay && rMonth - 1 === tMonth && rYear === tYear);
         } else if (filter === 'monthly') {
-            return (rMonth === tMonth && rYear === tYear);
+            return (rMonth - 1 === tMonth && rYear === tYear);
         } else if (filter === 'weekly') {
-            let diffT = today.getTime() - dDate.getTime();
-            let diffDays = diffT / (1000 * 3600 * 24);
+            let diffDays = (today.getTime() - dDate.getTime()) / (1000 * 3600 * 24);
             return diffDays >= 0 && diffDays <= 7;
         }
         return true;
     });
 
-    if(filteredData.length === 0) {
+    // ── Hitung ringkasan statistik ──────────────────────────────────────
+    const showSummary = (filter === 'weekly' || filter === 'monthly' ||
+                         filter === 'all'    || dateFrom || dateTo);
+    const summaryPanel = document.getElementById('reportSummary');
+
+    if (showSummary && filteredData.length > 0) {
+        summaryPanel.style.display = '';
+
+        // Hitung total per status
+        const statusCount = { Hadir: 0, Ijin: 0, Sakit: 0, Alpa: 0 };
+        filteredData.forEach(rec => {
+            const s = rec["STATUS"] || 'Hadir';
+            if (statusCount.hasOwnProperty(s)) statusCount[s]++;
+        });
+        const totalRec = filteredData.length;
+
+        // Hitung jumlah hari unik dalam periode
+        const uniqueDates = [...new Set(filteredData.map(r => String(r["TANGGAL"]).substring(0, 10)))];
+        const totalHari = uniqueDates.length;
+
+        // Stat cards
+        const statDefs = [
+            { label: 'Total Presensi', value: totalRec,          icon: 'fa-list-check',    color: '#60a5fa' },
+            { label: 'Hari Kegiatan',  value: totalHari,         icon: 'fa-calendar-days', color: '#a78bfa' },
+            { label: 'Hadir',          value: statusCount.Hadir, icon: 'fa-check-circle',  color: '#4ade80' },
+            { label: 'Ijin',           value: statusCount.Ijin,  icon: 'fa-door-open',     color: '#60a5fa' },
+            { label: 'Sakit',          value: statusCount.Sakit, icon: 'fa-heartbeat',     color: '#f59e0b' },
+            { label: 'Alpa',           value: statusCount.Alpa,  icon: 'fa-times-circle',  color: '#f87171' },
+        ];
+        document.getElementById('reportStatCards').innerHTML = statDefs.map(s => `
+            <div style="flex:1;min-width:80px;background:rgba(15,23,42,0.5);border:1px solid ${s.color}40;
+                        border-radius:10px;padding:10px 8px;text-align:center;">
+                <i class="fas ${s.icon}" style="color:${s.color};font-size:1rem;display:block;margin-bottom:4px;"></i>
+                <div style="font-size:1.15rem;font-weight:700;color:${s.color};">${s.value}</div>
+                <div style="font-size:0.65rem;opacity:0.6;margin-top:2px;">${s.label}</div>
+            </div>`).join('');
+
+        // Rekap per anggota: hitung Hadir/Ijin/Sakit/Alpa masing-masing
+        const memberMap = {};
+        members.forEach(m => { memberMap[String(m["ID (BARCODE)"])] = m; });
+
+        const perAnggota = {};
+        filteredData.forEach(rec => {
+            const id   = normalizeId(rec["ID (BARCODE)"]);
+            const nama = rec["NAMA LENGKAP"] || (memberMap[id] && memberMap[id]["NAMA LENGKAP"]) || id;
+            const gol  = rec["GOL. KEANGGOTAAN"] || (memberMap[id] && memberMap[id]["GOL. KEANGGOTAAN"]) || '-';
+            const foto = (memberMap[id] && memberMap[id]["URL FOTO"]) || 'https://via.placeholder.com/32';
+            const s    = rec["STATUS"] || 'Hadir';
+            if (!perAnggota[id]) {
+                perAnggota[id] = { id, nama, gol, foto, Hadir: 0, Ijin: 0, Sakit: 0, Alpa: 0 };
+            }
+            if (perAnggota[id].hasOwnProperty(s)) perAnggota[id][s]++;
+        });
+
+        // Urutkan: Hadir terbanyak dulu
+        const sorted = Object.values(perAnggota).sort((a, b) => b.Hadir - a.Hadir);
+
+        const statusColor = { Hadir: '#4ade80', Ijin: '#60a5fa', Sakit: '#f59e0b', Alpa: '#f87171' };
+
+        document.getElementById('reportPeriodLabel').textContent = getPeriodLabel();
+        document.getElementById('reportMemberSummary').innerHTML = sorted.map((a, idx) => {
+            const total = a.Hadir + a.Ijin + a.Sakit + a.Alpa;
+            const pct   = totalHari > 0 ? Math.round((a.Hadir / totalHari) * 100) : 0;
+            const badges = ['Hadir','Ijin','Sakit','Alpa']
+                .filter(s => a[s] > 0)
+                .map(s => `<span style="font-size:0.65rem;background:${statusColor[s]}20;color:${statusColor[s]};
+                                        border:1px solid ${statusColor[s]}50;border-radius:4px;padding:1px 6px;">
+                                ${s} ${a[s]}</span>`).join('');
+            return `
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;
+                            border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size:0.72rem;opacity:0.35;width:18px;text-align:right;flex-shrink:0;">${idx+1}</span>
+                    <img src="${a.foto}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:0.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nama}</div>
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">${badges}</div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-size:0.9rem;font-weight:700;color:#4ade80;">${a.Hadir}<span style="font-size:0.7rem;opacity:0.5;font-weight:400;">/${totalHari}</span></div>
+                        <div style="font-size:0.65rem;opacity:0.45;">${pct}% hadir</div>
+                    </div>
+                </div>`;
+        }).join('');
+    } else {
+        summaryPanel.style.display = 'none';
+    }
+
+    // ── Render tabel detail ─────────────────────────────────────────────
+    if (filteredData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">Tidak ada data</td></tr>';
         return;
     }
 
     filteredData.forEach(rec => {
         let timeStr = rec["WAKTU"];
-        // Data dari GS sudah format HH:mm (WIB), fallback jika masih format lama
         if (timeStr && String(timeStr).length > 5) {
             try {
                 const t = new Date(timeStr);
                 if (!isNaN(t.getTime())) {
-                    // Konversi ke WIB (UTC+7)
                     const wibOffset = 7 * 60;
                     const localOffset = t.getTimezoneOffset();
                     const wibTime = new Date(t.getTime() + (wibOffset + localOffset) * 60000);
-                    timeStr = String(wibTime.getHours()).padStart(2, '0') + ':' + String(wibTime.getMinutes()).padStart(2, '0');
+                    timeStr = String(wibTime.getHours()).padStart(2,'0') + ':' + String(wibTime.getMinutes()).padStart(2,'0');
                 } else {
                     timeStr = String(timeStr).substring(11, 16);
                 }
@@ -839,7 +928,10 @@ function renderReportTable() {
                 timeStr = String(timeStr).substring(11, 16);
             }
         }
-        
+
+        const statusColors = { 'Hadir':'var(--success-color)', 'Ijin':'#60a5fa', 'Sakit':'#f59e0b', 'Alpa':'var(--danger-color)' };
+        const statusBg = statusColors[rec["STATUS"]] || 'var(--danger-color)';
+
         let tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${String(rec["TANGGAL"]).substring(0,10)}</td>
@@ -847,7 +939,7 @@ function renderReportTable() {
             <td>${rec["ID (BARCODE)"]}</td>
             <td>${rec["NAMA LENGKAP"]}</td>
             <td>${rec["GOL. KEANGGOTAAN"]}</td>
-            <td><span class="badge" style="background: ${rec["STATUS"] === 'Hadir' ? 'var(--success-color)' : 'var(--danger-color)'}; padding: 3px 8px; border-radius: 4px; color: #fff;">${rec["STATUS"]}</span></td>
+            <td><span class="badge" style="background:${statusBg};padding:3px 8px;border-radius:4px;color:#fff;">${rec["STATUS"]}</span></td>
         `;
         tbody.appendChild(tr);
     });
