@@ -223,6 +223,40 @@ function updateVisibility() {
  * cocokkan dengan ID canonical dari data anggota.
  * Contoh: "123" -> "0123" jika anggota punya ID "0123"
  */
+/**
+ * Kembalikan URL foto anggota. Jika kosong, buat avatar SVG inline
+ * dengan inisial nama dan warna unik berdasarkan nama.
+ */
+function getAvatarSrc(fotoUrl, namaLengkap, size = 40) {
+    const url = (fotoUrl || '').trim();
+    if (url && url !== '-') return url;
+
+    // Ambil inisial: maks 2 huruf dari kata pertama & terakhir
+    const nama = (namaLengkap || '?').trim();
+    const parts = nama.split(/\s+/).filter(Boolean);
+    const initials = parts.length >= 2
+        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        : nama.substring(0, 2).toUpperCase();
+
+    // Warna unik deterministik dari nama
+    const colors = [
+        '#3b82f6','#8b5cf6','#ec4899','#f97316',
+        '#22c55e','#06b6d4','#eab308','#ef4444',
+        '#a855f7','#14b8a6','#f59e0b','#6366f1',
+    ];
+    let hash = 0;
+    for (let i = 0; i < nama.length; i++) hash = nama.charCodeAt(i) + ((hash << 5) - hash);
+    const color = colors[Math.abs(hash) % colors.length];
+
+    const fontSize = Math.round(size * 0.38);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <rect width="${size}" height="${size}" rx="${size/2}" fill="${color}" opacity="0.85"/>
+        <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle"
+              font-family="Inter,sans-serif" font-size="${fontSize}" font-weight="600" fill="#fff">${initials}</text>
+    </svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
 function normalizeId(rawId) {
     const str = String(rawId).trim();
     // Cek apakah ada anggota dengan ID exact
@@ -344,7 +378,7 @@ function showGolonganModal(g, dateStr, hadirPerGol, totalPerGol, memberGolMap) {
     const statusIcon  = { 'Hadir': 'fa-check-circle', 'Ijin': 'fa-door-open', 'Sakit': 'fa-heartbeat', 'Alpa': 'fa-times-circle' };
 
     function buildRow(m, status) {
-        const foto  = m["URL FOTO"] || 'https://via.placeholder.com/36';
+        const foto  = getAvatarSrc(m["URL FOTO"], m["NAMA LENGKAP"], 36);
         const nama  = m["NAMA LENGKAP"] || '-';
         const id    = m["ID (BARCODE)"] || '-';
         const color = status ? (statusColor[status] || '#94a3b8') : 'rgba(255,255,255,0.2)';
@@ -474,7 +508,7 @@ function renderRecentAttendance() {
         const gol    = rec["GOL. KEANGGOTAAN"] || (memberMap[id] && memberMap[id]["GOL. KEANGGOTAAN"]) || '-';
         const status = rec["STATUS"] || 'Hadir';
         const waktu  = String(rec["WAKTU"] || '').substring(0, 5) || '--:--';
-        const foto   = (memberMap[id] && memberMap[id]["URL FOTO"]) || 'https://via.placeholder.com/40';
+        const foto   = getAvatarSrc(memberMap[id] && memberMap[id]["URL FOTO"], memberMap[id] && memberMap[id]["NAMA LENGKAP"], 40);
         const color  = statusColor[status] || '#94a3b8';
         const icon   = statusIcon[status]  || 'fa-circle';
 
@@ -719,7 +753,7 @@ function renderManualMemberList(query) {
         const id = m["ID (BARCODE)"];
         const nama = m["NAMA LENGKAP"] || '-';
         const gol = m["GOL. KEANGGOTAAN"] || '-';
-        const foto = m["URL FOTO"] || 'https://via.placeholder.com/40';
+        const foto = getAvatarSrc(m["URL FOTO"], m["NAMA LENGKAP"], 40);
         const isSelected = id === selectedId;
 
         const item = document.createElement('div');
@@ -754,7 +788,7 @@ function highlightText(text, query) {
 
 function selectManualMember(m) {
     document.getElementById('selectAnggotaAbsen').value = m["ID (BARCODE)"];
-    document.getElementById('previewFoto').src = m["URL FOTO"] || 'https://via.placeholder.com/44';
+    document.getElementById('previewFoto').src = getAvatarSrc(m["URL FOTO"], m["NAMA LENGKAP"], 44);
     document.getElementById('previewNama').innerText = m["NAMA LENGKAP"] || '-';
     document.getElementById('previewInfo').innerText = `${m["ID (BARCODE)"]} · ${m["GOL. KEANGGOTAAN"] || '-'}`;
     document.getElementById('selectedMemberPreview').style.display = 'block';
@@ -864,7 +898,7 @@ function renderReportTable() {
             const id   = normalizeId(rec["ID (BARCODE)"]);
             const nama = rec["NAMA LENGKAP"] || (memberMap[id] && memberMap[id]["NAMA LENGKAP"]) || id;
             const gol  = rec["GOL. KEANGGOTAAN"] || (memberMap[id] && memberMap[id]["GOL. KEANGGOTAAN"]) || '-';
-            const foto = (memberMap[id] && memberMap[id]["URL FOTO"]) || 'https://via.placeholder.com/32';
+            const foto = getAvatarSrc(memberMap[id] && memberMap[id]["URL FOTO"], a.nama, 32);
             const s    = rec["STATUS"] || 'Hadir';
             if (!perAnggota[id]) {
                 perAnggota[id] = { id, nama, gol, foto, Hadir: 0, Ijin: 0, Sakit: 0, Alpa: 0 };
@@ -980,7 +1014,7 @@ function renderMembersTable() {
     }
 
     paginated.forEach((m, idx) => {
-        let imgUrl = m["URL FOTO"] || 'https://via.placeholder.com/50';
+        let imgUrl = getAvatarSrc(m["URL FOTO"], m["NAMA LENGKAP"], 50);
         let nama = m["NAMA LENGKAP"] || m["NAMA"] || '(Nama tidak tersedia)';
         let idBarcode = m["ID (BARCODE)"] || '-';
         let golongan = m["GOL. KEANGGOTAAN"] || '-';
@@ -1058,7 +1092,7 @@ function processScan(barcodeStr) {
 }
 
 function showResultModal(member, msg) {
-    document.getElementById('resFoto').src = member["URL FOTO"] || 'https://via.placeholder.com/150';
+    document.getElementById('resFoto').src = getAvatarSrc(member["URL FOTO"], member["NAMA LENGKAP"], 150);
     document.getElementById('resNama').innerText = member["NAMA LENGKAP"];
     document.getElementById('resGolongan').innerText = member["GOL. KEANGGOTAAN"];
     
